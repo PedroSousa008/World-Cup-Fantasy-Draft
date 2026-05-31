@@ -180,3 +180,11 @@ body {
 .accent-blue { color: var(--color-wc-blue); }
 .accent-green { color: var(--color-wc-green); }
 .accent-red { color: var(--color-wc-red); }
+
+.scrollbar-none {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}

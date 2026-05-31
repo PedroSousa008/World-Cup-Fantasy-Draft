@@ -33,7 +33,7 @@ export type SubTab = {
 
 export const MY_TEAM_TABS: SubTab[] = [
   { label: "Team", slug: "team" },
-  { label: "Ranking Tables", slug: "rankings" },
+  { label: "Rankings", slug: "rankings" },
   { label: "Draft Room", slug: "draft" },
   { label: "Powers", slug: "powers" },
 ];

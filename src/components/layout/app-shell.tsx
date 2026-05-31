@@ -26,35 +26,43 @@ export function AppShell({ children, user }: AppShellProps) {
   const theme = getScreenTheme(pathname);
   const isOwner = user.role === UserRole.OWNER;
 
+  const isMyTeam = pathname.startsWith("/my-team");
+
   return (
     <div className="relative min-h-screen text-white">
       <WorldCupBackground theme={theme} />
 
       <header className="wc-glass sticky top-0 z-40 border-b">
-        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6">
+        <div
+          className={`mx-auto flex h-14 items-center justify-between px-4 sm:h-16 sm:px-6 ${
+            isMyTeam ? "max-w-lg" : "max-w-7xl"
+          }`}
+        >
           <Link href="/my-team">
-            <BrandLogo showName={false} className="sm:hidden" />
-            <BrandLogo className="hidden sm:flex" />
+            <BrandLogo showName={!isMyTeam} />
           </Link>
 
-          <div className="flex items-center gap-3">
-            {isOwner && (
+          <div className="flex items-center gap-2">
+            {isOwner && !isMyTeam && (
               <span className="hidden items-center gap-1.5 rounded-full border border-[#0066FF]/30 bg-[#0066FF]/10 px-2.5 py-1 text-xs font-semibold text-[#0066FF] sm:flex">
                 <Shield className="h-3 w-3" />
                 Owner
               </span>
             )}
-            <div className="hidden text-right sm:block">
-              <p className="text-sm font-semibold text-white">{user.teamName}</p>
-              <p className="text-xs text-white/50">
-                {user.username} · {user.selectedNation}
-              </p>
-            </div>
+            {!isMyTeam && (
+              <div className="hidden text-right sm:block">
+                <p className="text-sm font-semibold text-white">{user.teamName}</p>
+                <p className="text-xs text-white/50">
+                  {user.username} · {user.selectedNation}
+                </p>
+              </div>
+            )}
             <Button
               variant="ghost"
               size="sm"
               onClick={() => signOut({ callbackUrl: "/login" })}
               aria-label="Sign out"
+              className="min-h-[44px] min-w-[44px]"
             >
               <LogOut className="h-4 w-4" />
             </Button>
@@ -62,11 +70,23 @@ export function AppShell({ children, user }: AppShellProps) {
         </div>
       </header>
 
-      <div className="mx-auto flex max-w-7xl gap-8 px-4 py-6 sm:px-6">
-        <aside className="hidden w-56 shrink-0 md:block">
-          <SidebarNav userRole={user.role} />
-        </aside>
-        <main className="wc-stagger min-w-0 flex-1 pb-24 md:pb-8">{children}</main>
+      <div
+        className={`mx-auto px-0 py-0 sm:px-6 sm:py-6 ${
+          isMyTeam ? "max-w-lg" : "flex max-w-7xl gap-8 px-4"
+        }`}
+      >
+        {!isMyTeam && (
+          <aside className="hidden w-56 shrink-0 md:block">
+            <SidebarNav userRole={user.role} />
+          </aside>
+        )}
+        <main
+          className={`wc-stagger min-w-0 flex-1 ${
+            isMyTeam ? "pb-24" : "pb-24 md:pb-8"
+          }`}
+        >
+          {children}
+        </main>
       </div>
 
       <BottomNav userRole={user.role} />
