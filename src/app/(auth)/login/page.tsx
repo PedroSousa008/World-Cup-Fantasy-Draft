@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { Trophy } from "lucide-react";
 import { LoginForm } from "@/components/auth/LoginForm";
 import { ownerExists } from "@/lib/platform";

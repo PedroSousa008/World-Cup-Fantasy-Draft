@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { redirect } from "next/navigation";
 import { Shield } from "lucide-react";
 import { RegisterOwnerForm } from "@/components/auth/RegisterOwnerForm";
