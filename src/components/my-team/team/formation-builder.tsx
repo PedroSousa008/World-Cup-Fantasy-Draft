@@ -102,7 +102,6 @@ export function FormationBuilder({ teamName, selectedNation }: FormationBuilderP
           benchSlots={benchSlots}
           getPlayer={squad.getSlotPlayer}
           captainId={squad.captainId}
-          viceCaptainId={squad.viceCaptainId}
           onEmptyClick={(slotId) => squad.setPickerSlotId(slotId)}
           onPlayerClick={(slotId, playerId) => {
             setDetailSlotId(slotId);

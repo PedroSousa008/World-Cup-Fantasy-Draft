@@ -12,7 +12,6 @@ interface BenchPanelProps {
   benchSlots: SquadSlot[];
   getPlayer: (slotId: string) => FantasyPlayer | null;
   captainId: string | null;
-  viceCaptainId: string | null;
   onEmptyClick: (slotId: string) => void;
   onPlayerClick: (slotId: string, playerId: string) => void;
 }
@@ -23,7 +22,6 @@ export function BenchPanel({
   benchSlots,
   getPlayer,
   captainId,
-  viceCaptainId,
   onEmptyClick,
   onPlayerClick,
 }: BenchPanelProps) {
@@ -57,7 +55,6 @@ export function BenchPanel({
                 slot={slot}
                 player={player}
                 isCaptain={player?.id === captainId}
-                isViceCaptain={player?.id === viceCaptainId}
                 onEmptyClick={() => onEmptyClick(slot.id)}
                 onPlayerClick={() => player && onPlayerClick(slot.id, player.id)}
               />
