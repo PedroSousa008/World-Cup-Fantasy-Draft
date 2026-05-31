@@ -1,45 +1,48 @@
-import { auth } from "@/lib/auth";
+import NextAuth from "next-auth";
+import { UserRole } from "@prisma/client";
 import { NextResponse } from "next/server";
+import { authConfig } from "@/lib/auth/auth.config";
 
-const authRoutes = ["/login", "/register", "/register/owner"];
-const protectedPrefixes = [
-  "/my-team",
-  "/predictions",
-  "/bets",
-  "/calendar",
-  "/profile",
-  "/owner",
-];
+const { auth } = NextAuth(authConfig);
+
+const publicRoutes = ["/", "/login", "/register", "/create-owner"];
+const authRoutes = ["/login", "/register", "/create-owner"];
+const ownerRoutes = ["/owner"];
 
 export default auth((req) => {
-  const { pathname } = req.nextUrl;
+  const { nextUrl } = req;
   const isLoggedIn = !!req.auth;
-  const isOwner = req.auth?.user?.role === "OWNER";
+  const userRole = req.auth?.user?.role;
+  const pathname = nextUrl.pathname;
 
-  const isAuthRoute = authRoutes.some(
+  const isPublicRoute = publicRoutes.some(
     (route) => pathname === route || pathname.startsWith(`${route}/`)
   );
-
-  const isProtected = protectedPrefixes.some(
-    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)
+  const isAuthRoute = authRoutes.some((route) => pathname === route);
+  const isOwnerRoute = ownerRoutes.some(
+    (route) => pathname === route || pathname.startsWith(`${route}/`)
   );
+  const isApiAuthRoute = pathname.startsWith("/api/auth");
 
-  if (isLoggedIn && isAuthRoute) {
-    const redirectTo = isOwner ? "/owner" : "/my-team";
-    return NextResponse.redirect(new URL(redirectTo, req.url));
+  if (isApiAuthRoute) {
+    return NextResponse.next();
   }
 
-  if (!isLoggedIn && isProtected) {
-    return NextResponse.redirect(new URL("/login", req.url));
+  if (isAuthRoute && isLoggedIn) {
+    return NextResponse.redirect(new URL("/my-team", nextUrl));
   }
 
-  if (pathname.startsWith("/owner") && isLoggedIn && !isOwner) {
-    return NextResponse.redirect(new URL("/my-team", req.url));
+  if (!isLoggedIn && !isPublicRoute) {
+    const callbackUrl = encodeURIComponent(pathname);
+    return NextResponse.redirect(new URL(`/login?callbackUrl=${callbackUrl}`, nextUrl));
   }
 
-  if (pathname.startsWith("/register/owner")) {
-    if (isLoggedIn) {
-      return NextResponse.redirect(new URL("/my-team", req.url));
+  if (isOwnerRoute) {
+    if (!isLoggedIn) {
+      return NextResponse.redirect(new URL("/login", nextUrl));
+    }
+    if (userRole !== UserRole.OWNER) {
+      return NextResponse.redirect(new URL("/my-team", nextUrl));
     }
   }
 
@@ -47,7 +50,5 @@ export default auth((req) => {
 });
 
 export const config = {
-  matcher: [
-    "/((?!api|_next/static|_next/image|favicon.ico|.*\\..*).*)",
-  ],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|.*\\..*).*)"],
 };

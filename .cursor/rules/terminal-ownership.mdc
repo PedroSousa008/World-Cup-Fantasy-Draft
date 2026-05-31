@@ -1,0 +1,15 @@
+---
+description: Agent runs all terminal commands; never ask the user to use the terminal
+alwaysApply: true
+---
+
+# Terminal Ownership
+
+The user does not run terminal commands during this project. The agent must handle all of it:
+
+- Install dependencies, run builds, start/stop dev servers
+- Create and sync `.env.local`, database migrations, and deployment env vars
+- Git, GitHub, Vercel, and database CLI operations
+- Debugging via logs, curl, and health checks
+
+Never ask the user to run a command in their terminal. If something requires their account (OAuth browser flow, API keys they must create in a dashboard), do what you can first, then explain only the non-terminal step clearly.

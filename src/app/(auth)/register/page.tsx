@@ -1,23 +1,28 @@
-import { Trophy } from "lucide-react";
-import { RegisterForm } from "@/components/auth/RegisterForm";
+export const dynamic = "force-dynamic";
 
-export default function RegisterPage() {
+import { redirect } from "next/navigation";
+import Link from "next/link";
+import { RegisterForm } from "@/components/auth/register-form";
+import { APP_NAME } from "@/lib/constants";
+import { isOwnerCreated } from "@/lib/auth/permissions";
+
+export default async function RegisterPage() {
+  const ownerExists = await isOwnerCreated();
+
+  if (!ownerExists) {
+    redirect("/create-owner");
+  }
+
   return (
-    <div className="flex min-h-screen items-center justify-center px-4 py-8">
+    <div className="flex min-h-screen flex-col items-center justify-center px-4 py-12">
+      <div className="mb-8 text-center">
+        <Link href="/" className="inline-flex items-center gap-2 text-2xl font-bold text-white">
+          <span>⚽</span>
+          {APP_NAME}
+        </Link>
+      </div>
       <div className="w-full max-w-md">
-        <div className="mb-8 text-center">
-          <div className="mb-4 flex justify-center">
-            <Trophy className="h-12 w-12 text-gold-500" />
-          </div>
-          <h1 className="text-2xl font-bold text-white">Join the Competition</h1>
-          <p className="mt-2 text-sm text-zinc-400">
-            Create your team and pick your nation
-          </p>
-        </div>
-
-        <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-6">
-          <RegisterForm />
-        </div>
+        <RegisterForm />
       </div>
     </div>
   );

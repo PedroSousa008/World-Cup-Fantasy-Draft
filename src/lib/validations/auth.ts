@@ -1,44 +1,35 @@
 import { z } from "zod";
 
 export const loginSchema = z.object({
-  email: z.string().email("Invalid email address"),
-  password: z.string().min(1, "Password is required"),
+  email: z.string().email("Please enter a valid email address"),
+  password: z.string().min(8, "Password must be at least 8 characters"),
 });
 
-export const registerUserSchema = z.object({
-  email: z.string().email("Invalid email address"),
+export const ownerRegisterSchema = z.object({
+  email: z.string().email("Please enter a valid email address"),
   password: z
     .string()
     .min(8, "Password must be at least 8 characters")
-    .max(72, "Password is too long"),
+    .regex(/[A-Z]/, "Password must contain at least one uppercase letter")
+    .regex(/[0-9]/, "Password must contain at least one number"),
+  confirmPassword: z.string(),
   username: z
     .string()
     .min(3, "Username must be at least 3 characters")
-    .max(30, "Username is too long")
+    .max(20, "Username must be at most 20 characters")
     .regex(/^[a-zA-Z0-9_]+$/, "Username can only contain letters, numbers, and underscores"),
   teamName: z
     .string()
     .min(2, "Team name must be at least 2 characters")
-    .max(50, "Team name is too long"),
-  nation: z
-    .string()
-    .min(2, "Nation is required")
-    .max(50, "Nation name is too long"),
+    .max(30, "Team name must be at most 30 characters"),
+  selectedNation: z.string().min(2, "Please select a nation"),
+}).refine((data) => data.password === data.confirmPassword, {
+  message: "Passwords do not match",
+  path: ["confirmPassword"],
 });
 
-export const registerOwnerSchema = z.object({
-  email: z.string().email("Invalid email address"),
-  password: z
-    .string()
-    .min(8, "Password must be at least 8 characters")
-    .max(72, "Password is too long"),
-  username: z
-    .string()
-    .min(3, "Username must be at least 3 characters")
-    .max(30, "Username is too long")
-    .regex(/^[a-zA-Z0-9_]+$/, "Username can only contain letters, numbers, and underscores"),
-});
+export const userRegisterSchema = ownerRegisterSchema;
 
 export type LoginInput = z.infer<typeof loginSchema>;
-export type RegisterUserInput = z.infer<typeof registerUserSchema>;
-export type RegisterOwnerInput = z.infer<typeof registerOwnerSchema>;
+export type OwnerRegisterInput = z.infer<typeof ownerRegisterSchema>;
+export type UserRegisterInput = z.infer<typeof userRegisterSchema>;
