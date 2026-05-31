@@ -1,5 +1,5 @@
 import type { NextAuthConfig } from "next-auth";
-import { UserRole } from "@prisma/client";
+import type { AppUserRole } from "@/lib/auth/roles";
 
 declare module "next-auth" {
   interface Session {
@@ -9,7 +9,7 @@ declare module "next-auth" {
       username: string;
       teamName: string;
       selectedNation: string;
-      role: UserRole;
+      role: AppUserRole;
       profilePicture?: string | null;
     };
   }
@@ -20,7 +20,7 @@ declare module "next-auth" {
     username: string;
     teamName: string;
     selectedNation: string;
-    role: UserRole;
+    role: AppUserRole;
     profilePicture?: string | null;
   }
 }
@@ -31,7 +31,7 @@ declare module "@auth/core/jwt" {
     username: string;
     teamName: string;
     selectedNation: string;
-    role: UserRole;
+    role: AppUserRole;
     profilePicture?: string | null;
   }
 }

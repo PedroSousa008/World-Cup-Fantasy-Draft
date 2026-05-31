@@ -1,0 +1,27 @@
+---
+description: Stop and ask before interactive auth; never hang on OAuth prompts
+alwaysApply: true
+---
+
+# No Hanging on Interactive Steps
+
+Never run commands that wait indefinitely for user input (OAuth browser flows, `gh auth login`, password prompts, `read`, interactive wizards).
+
+## If blocked by authentication
+
+1. **Stop immediately** — do not leave a background command waiting.
+2. **Tell the user exactly what is needed** in plain language (one clear ask).
+3. **Wait for their reply** before retrying.
+4. Prefer non-interactive paths first:
+   - **Vercel:** `vercel deploy --prod --yes` (CLI already logged in)
+   - **GitHub:** use a PAT the user pastes in chat, or ask them to confirm after opening a link — never start `gh auth login` and wait
+
+## After every code change session
+
+1. Commit locally with a clear message
+2. Deploy to Vercel production (`vercel deploy --prod --yes`)
+3. Push to GitHub when credentials are available — if not, stop and ask once, do not hang
+
+## Terminal ownership
+
+The user does not run terminal commands. The agent runs everything. The only exceptions are one-time account actions the user must do in a browser (OAuth, creating a token) — those must be requested explicitly before starting, never mid-command.

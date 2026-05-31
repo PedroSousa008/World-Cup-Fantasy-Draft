@@ -1,6 +1,6 @@
 import NextAuth from "next-auth";
-import { UserRole } from "@prisma/client";
 import { NextResponse } from "next/server";
+import { USER_ROLE } from "@/lib/auth/roles";
 import { authConfig } from "@/lib/auth/auth.config";
 
 const { auth } = NextAuth(authConfig);
@@ -41,7 +41,7 @@ export default auth((req) => {
     if (!isLoggedIn) {
       return NextResponse.redirect(new URL("/login", nextUrl));
     }
-    if (userRole !== UserRole.OWNER) {
+    if (userRole !== USER_ROLE.OWNER) {
       return NextResponse.redirect(new URL("/my-team", nextUrl));
     }
   }
