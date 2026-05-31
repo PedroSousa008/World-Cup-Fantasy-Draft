@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
@@ -55,7 +54,7 @@ export function RegisterForm() {
     >
       <form onSubmit={handleSubmit} className="space-y-4">
         {error && (
-          <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400">
+          <div className="rounded-xl border border-[#E53935]/25 bg-[#E53935]/8 px-4 py-3 text-sm text-[#E53935]">
             {error}
           </div>
         )}
@@ -112,12 +111,6 @@ export function RegisterForm() {
         <Button type="submit" className="w-full" isLoading={isLoading}>
           Create account
         </Button>
-        <p className="text-center text-sm text-slate-400">
-          Already have an account?{" "}
-          <Link href="/login" className="text-emerald-400 hover:underline">
-            Sign in
-          </Link>
-        </p>
       </form>
     </Card>
   );

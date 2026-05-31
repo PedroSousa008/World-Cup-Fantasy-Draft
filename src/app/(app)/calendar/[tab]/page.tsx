@@ -36,8 +36,8 @@ export default async function CalendarTabPage({ params }: PageProps) {
 
   return (
     <div className="space-y-6">
-      <SubTabs tabs={CALENDAR_TABS} activeTab={tab} basePath="/calendar" />
-      <SectionPage {...content} />
+      <SubTabs tabs={CALENDAR_TABS} activeTab={tab} basePath="/calendar" accent="green" />
+      <SectionPage {...content} accent="blue" />
     </div>
   );
 }

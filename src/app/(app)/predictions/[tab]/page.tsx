@@ -43,8 +43,8 @@ export default async function PredictionsTabPage({ params }: PageProps) {
 
   return (
     <div className="space-y-6">
-      <SubTabs tabs={PREDICTIONS_TABS} activeTab={tab} basePath="/predictions" />
-      <SectionPage {...content} />
+      <SubTabs tabs={PREDICTIONS_TABS} activeTab={tab} basePath="/predictions" accent="blue" />
+      <SectionPage {...content} accent="blue" />
     </div>
   );
 }

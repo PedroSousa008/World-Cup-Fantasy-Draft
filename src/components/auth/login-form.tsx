@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { loginAction } from "@/lib/actions/auth";
@@ -40,7 +39,7 @@ export function LoginForm() {
     <Card title="Sign in" description={`Welcome back to ${APP_NAME}`}>
       <form onSubmit={handleSubmit} className="space-y-4">
         {error && (
-          <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400">
+          <div className="rounded-xl border border-[#E53935]/25 bg-[#E53935]/8 px-4 py-3 text-sm text-[#E53935]">
             {error}
           </div>
         )}
@@ -63,12 +62,6 @@ export function LoginForm() {
         <Button type="submit" className="w-full" isLoading={isLoading}>
           Sign in
         </Button>
-        <p className="text-center text-sm text-slate-400">
-          No account?{" "}
-          <Link href="/register" className="text-emerald-400 hover:underline">
-            Create one
-          </Link>
-        </p>
       </form>
     </Card>
   );

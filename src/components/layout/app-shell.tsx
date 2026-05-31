@@ -1,11 +1,14 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
 import { LogOut, Shield } from "lucide-react";
-import { APP_NAME } from "@/lib/constants";
 import { SidebarNav, BottomNav } from "@/components/layout/navigation";
 import { Button } from "@/components/ui/button";
+import { BrandLogo } from "@/components/design/ball-mark";
+import { WorldCupBackground } from "@/components/design/world-cup-background";
+import { getScreenTheme } from "@/lib/design/theme";
 import { UserRole } from "@prisma/client";
 
 interface AppShellProps {
@@ -19,28 +22,31 @@ interface AppShellProps {
 }
 
 export function AppShell({ children, user }: AppShellProps) {
+  const pathname = usePathname();
+  const theme = getScreenTheme(pathname);
   const isOwner = user.role === UserRole.OWNER;
 
   return (
-    <div className="min-h-screen bg-transparent text-slate-100">
-      <header className="sticky top-0 z-40 border-b border-slate-800 bg-slate-950/95 backdrop-blur-md">
-        <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4 sm:px-6">
+    <div className="relative min-h-screen text-white">
+      <WorldCupBackground theme={theme} />
+
+      <header className="wc-glass sticky top-0 z-40 border-b">
+        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6">
+          <Link href="/my-team">
+            <BrandLogo showName={false} className="sm:hidden" />
+            <BrandLogo className="hidden sm:flex" />
+          </Link>
+
           <div className="flex items-center gap-3">
-            <Link href="/my-team" className="flex items-center gap-2">
-              <span className="text-xl">⚽</span>
-              <span className="hidden font-bold text-white sm:inline">{APP_NAME}</span>
-            </Link>
             {isOwner && (
-              <span className="hidden items-center gap-1 rounded-full bg-amber-500/10 px-2 py-0.5 text-xs font-medium text-amber-400 sm:flex">
+              <span className="hidden items-center gap-1.5 rounded-full border border-[#0066FF]/30 bg-[#0066FF]/10 px-2.5 py-1 text-xs font-semibold text-[#0066FF] sm:flex">
                 <Shield className="h-3 w-3" />
                 Owner
               </span>
             )}
-          </div>
-          <div className="flex items-center gap-3">
             <div className="hidden text-right sm:block">
-              <p className="text-sm font-medium text-white">{user.teamName}</p>
-              <p className="text-xs text-slate-400">
+              <p className="text-sm font-semibold text-white">{user.teamName}</p>
+              <p className="text-xs text-white/50">
                 {user.username} · {user.selectedNation}
               </p>
             </div>
@@ -60,7 +66,7 @@ export function AppShell({ children, user }: AppShellProps) {
         <aside className="hidden w-56 shrink-0 md:block">
           <SidebarNav userRole={user.role} />
         </aside>
-        <main className="min-w-0 flex-1 pb-24 md:pb-6">{children}</main>
+        <main className="wc-stagger min-w-0 flex-1 pb-24 md:pb-8">{children}</main>
       </div>
 
       <BottomNav userRole={user.role} />

@@ -50,8 +50,8 @@ export default async function MyTeamTabPage({ params }: PageProps) {
 
   return (
     <div className="space-y-6">
-      <SubTabs tabs={MY_TEAM_TABS} activeTab={tab} basePath="/my-team" />
-      <SectionPage {...content} />
+      <SubTabs tabs={MY_TEAM_TABS} activeTab={tab} basePath="/my-team" accent="green" />
+      <SectionPage {...content} accent="green" />
     </div>
   );
 }

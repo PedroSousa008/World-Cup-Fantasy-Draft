@@ -5,7 +5,8 @@ import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { isOwnerCreated } from "@/lib/auth/permissions";
 import { Button } from "@/components/ui/button";
-import { APP_NAME } from "@/lib/constants";
+import { BallMark } from "@/components/design/ball-mark";
+import { WorldCupBackground } from "@/components/design/world-cup-background";
 
 export default async function HomePage() {
   const session = await auth();
@@ -16,38 +17,45 @@ export default async function HomePage() {
   const ownerExists = await isOwnerCreated();
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center px-4">
-      <div className="mx-auto max-w-lg text-center">
-        <div className="mb-6 text-6xl">⚽</div>
-        <h1 className="text-3xl font-bold tracking-tight text-white sm:text-4xl">
-          {APP_NAME}
+    <div className="relative flex min-h-screen flex-col items-center justify-center px-4">
+      <WorldCupBackground theme="auth" />
+
+      <div className="animate-wc-flow-in mx-auto max-w-xl text-center">
+        <div className="mb-8 flex justify-center">
+          <BallMark size="lg" className="scale-[1.8]" />
+        </div>
+
+        <h1 className="text-display text-4xl sm:text-5xl">
+          World Cup Fantasy Draft
         </h1>
-        <p className="mt-4 text-slate-400">
-          A private fantasy competition for the World Cup. Draft players, make
+        <p className="text-body mx-auto mt-5 max-w-md text-base leading-relaxed">
+          A premium private competition for the World Cup. Draft players, make
           predictions, place bets, and compete with your friends.
         </p>
-        <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-center">
+
+        <div className="mt-10 flex flex-col gap-3 sm:flex-row sm:justify-center">
           <Link href="/login">
-            <Button size="lg" className="w-full sm:w-auto">
+            <Button size="lg" className="w-full min-w-[160px] sm:w-auto">
               Sign in
             </Button>
           </Link>
           {ownerExists ? (
             <Link href="/register">
-              <Button variant="outline" size="lg" className="w-full sm:w-auto">
+              <Button variant="outline" size="lg" className="w-full min-w-[160px] sm:w-auto">
                 Create account
               </Button>
             </Link>
           ) : (
             <Link href="/create-owner">
-              <Button variant="secondary" size="lg" className="w-full sm:w-auto">
+              <Button variant="secondary" size="lg" className="w-full min-w-[160px] sm:w-auto">
                 Create Owner Account
               </Button>
             </Link>
           )}
         </div>
+
         {!ownerExists && (
-          <p className="mt-6 text-sm text-amber-400/80">
+          <p className="mt-8 text-sm text-[#0066FF]/80">
             First time setup: create the Owner account to initialize the platform.
           </p>
         )}

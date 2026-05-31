@@ -36,8 +36,8 @@ export default async function BetsTabPage({ params }: PageProps) {
 
   return (
     <div className="space-y-6">
-      <SubTabs tabs={BETS_TABS} activeTab={tab} basePath="/bets" />
-      <SectionPage {...content} />
+      <SubTabs tabs={BETS_TABS} activeTab={tab} basePath="/bets" accent="red" />
+      <SectionPage {...content} accent="red" />
     </div>
   );
 }

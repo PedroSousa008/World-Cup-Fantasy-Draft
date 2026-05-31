@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
@@ -53,19 +52,19 @@ export function OwnerRegisterForm() {
     <Card
       title={
         <span className="flex items-center gap-2">
-          <Shield className="h-5 w-5 text-amber-400" />
+          <Shield className="h-5 w-5 text-[#0066FF]" />
           Create Owner Account
         </span>
       }
       description="Set up the platform administrator. This can only be done once."
     >
-      <div className="mb-4 rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
+      <div className="mb-4 rounded-xl border border-[#0066FF]/20 bg-[#0066FF]/8 px-4 py-3 text-sm text-[#0052CC]">
         Only one Owner account can ever exist. Once created, this option disappears
         permanently.
       </div>
       <form onSubmit={handleSubmit} className="space-y-4">
         {error && (
-          <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400">
+          <div className="rounded-xl border border-[#E53935]/25 bg-[#E53935]/8 px-4 py-3 text-sm text-[#E53935]">
             {error}
           </div>
         )}
@@ -122,12 +121,6 @@ export function OwnerRegisterForm() {
         <Button type="submit" className="w-full" isLoading={isLoading}>
           Create Owner Account
         </Button>
-        <p className="text-center text-sm text-slate-400">
-          Already have an account?{" "}
-          <Link href="/login" className="text-emerald-400 hover:underline">
-            Sign in
-          </Link>
-        </p>
       </form>
     </Card>
   );

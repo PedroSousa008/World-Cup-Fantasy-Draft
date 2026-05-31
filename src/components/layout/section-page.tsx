@@ -1,10 +1,13 @@
 import { EmptyState } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
 
 interface SectionPageProps {
   title: string;
   description: string;
   emptyTitle: string;
   emptyDescription: string;
+  accent?: "blue" | "green" | "red";
+  children?: React.ReactNode;
 }
 
 export function SectionPage({
@@ -12,14 +15,39 @@ export function SectionPage({
   description,
   emptyTitle,
   emptyDescription,
+  accent = "blue",
+  children,
 }: SectionPageProps) {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-white">{title}</h1>
-        <p className="mt-1 text-sm text-slate-400">{description}</p>
+        <h1 className="text-display text-2xl sm:text-3xl">{title}</h1>
+        <p className="text-body mt-1.5 text-sm">{description}</p>
       </div>
-      <EmptyState title={emptyTitle} description={emptyDescription} />
+      {children ?? (
+        <EmptyState
+          title={emptyTitle}
+          description={emptyDescription}
+          accent={accent}
+        />
+      )}
+    </div>
+  );
+}
+
+export function PageHeader({
+  title,
+  description,
+  className,
+}: {
+  title: string;
+  description?: string;
+  className?: string;
+}) {
+  return (
+    <div className={cn("space-y-1", className)}>
+      <h1 className="text-display text-2xl sm:text-3xl">{title}</h1>
+      {description && <p className="text-body text-sm">{description}</p>}
     </div>
   );
 }

@@ -1,7 +1,6 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { SessionProvider } from "next-auth/react";
-import { WorldCupBackground } from "@/components/layout/world-cup-background";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -22,6 +21,10 @@ export const metadata: Metadata = {
   },
 };
 
+export const viewport: Viewport = {
+  themeColor: "#081120",
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -30,12 +33,9 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} min-h-screen font-sans antialiased text-slate-100`}
+        className={`${geistSans.variable} ${geistMono.variable} min-h-screen font-sans antialiased`}
       >
-        <WorldCupBackground />
-        <div className="world-cup-content">
-          <SessionProvider>{children}</SessionProvider>
-        </div>
+        <SessionProvider>{children}</SessionProvider>
       </body>
     </html>
   );
