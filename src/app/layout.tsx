@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { SessionProvider } from "next-auth/react";
+import { WorldCupBackground } from "@/components/layout/world-cup-background";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -29,9 +30,12 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} min-h-screen bg-slate-950 font-sans antialiased text-slate-100`}
+        className={`${geistSans.variable} ${geistMono.variable} min-h-screen font-sans antialiased text-slate-100`}
       >
-        <SessionProvider>{children}</SessionProvider>
+        <WorldCupBackground />
+        <div className="world-cup-content">
+          <SessionProvider>{children}</SessionProvider>
+        </div>
       </body>
     </html>
   );

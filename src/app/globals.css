@@ -3,16 +3,162 @@
 @theme inline {
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+
+  /* World Cup background design tokens */
+  --color-wc-bg-primary: #ffffff;
+  --color-wc-bg-secondary: #f8f9fa;
+  --color-wc-blue: #0066ff;
+  --color-wc-red: #e53935;
+  --color-wc-green: #00c853;
 }
 
+/* ─── Layer 1: base ───────────────────────────────────────────────────────── */
+
 body {
-  background-color: #020617;
+  background-color: var(--color-wc-bg-primary);
   color: #f1f5f9;
 }
 
+/* ─── World Cup background system ─────────────────────────────────────────── */
+
+.world-cup-background {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+  background-color: var(--color-wc-bg-primary);
+}
+
+.world-cup-shapes,
+.world-cup-patterns {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.world-cup-shapes {
+  z-index: 1;
+}
+
+.world-cup-patterns {
+  z-index: 2;
+  opacity: 0.55;
+}
+
+.world-cup-shape {
+  transform-origin: center;
+}
+
+/* Layer 4 — soft blur orbs */
+.world-cup-blur {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  z-index: 3;
+}
+
+.world-cup-blur--blue {
+  top: -8%;
+  left: -6%;
+  width: min(55vw, 520px);
+  height: min(55vw, 520px);
+  background: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--color-wc-blue) 6%, transparent) 0%,
+    transparent 70%
+  );
+}
+
+.world-cup-blur--red {
+  top: -4%;
+  right: -8%;
+  width: min(50vw, 480px);
+  height: min(50vw, 480px);
+  background: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--color-wc-red) 5%, transparent) 0%,
+    transparent 70%
+  );
+}
+
+.world-cup-blur--green {
+  bottom: -10%;
+  left: -4%;
+  width: min(48vw, 440px);
+  height: min(48vw, 440px);
+  background: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--color-wc-green) 5%, transparent) 0%,
+    transparent 70%
+  );
+}
+
+/* Content sits above the decorative background */
+.world-cup-content {
+  position: relative;
+  z-index: 1;
+  min-height: 100vh;
+}
+
+/* Secondary section surfaces (available for future use) */
+.wc-surface-secondary {
+  background-color: var(--color-wc-bg-secondary);
+}
+
+/* ─── Responsive shape scaling ────────────────────────────────────────────── */
+
+@media (max-width: 768px) {
+  .world-cup-shapes {
+    transform: scale(1.35);
+    transform-origin: center center;
+  }
+
+  .world-cup-patterns {
+    opacity: 0.4;
+  }
+
+  .world-cup-blur--blue {
+    width: 70vw;
+    height: 70vw;
+    top: -12%;
+    left: -18%;
+  }
+
+  .world-cup-blur--red {
+    width: 65vw;
+    height: 65vw;
+    right: -20%;
+  }
+
+  .world-cup-blur--green {
+    width: 60vw;
+    height: 60vw;
+    bottom: -14%;
+    left: -16%;
+  }
+}
+
+@media (min-width: 769px) and (max-width: 1024px) {
+  .world-cup-shapes {
+    transform: scale(1.12);
+  }
+}
+
+@media (min-width: 1440px) {
+  .world-cup-shapes,
+  .world-cup-patterns {
+    transform: scale(1.05);
+    transform-origin: center center;
+  }
+}
+
+/* ─── Scrollbar (chrome only, not UI components) ──────────────────────────── */
+
 * {
   scrollbar-width: thin;
-  scrollbar-color: #334155 transparent;
+  scrollbar-color: #cbd5e1 transparent;
 }
 
 *::-webkit-scrollbar {
@@ -21,6 +167,6 @@ body {
 }
 
 *::-webkit-scrollbar-thumb {
-  background-color: #334155;
+  background-color: #cbd5e1;
   border-radius: 9999px;
 }

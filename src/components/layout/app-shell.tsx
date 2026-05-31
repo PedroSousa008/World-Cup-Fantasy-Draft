@@ -22,7 +22,7 @@ export function AppShell({ children, user }: AppShellProps) {
   const isOwner = user.role === UserRole.OWNER;
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100">
+    <div className="min-h-screen bg-transparent text-slate-100">
       <header className="sticky top-0 z-40 border-b border-slate-800 bg-slate-950/95 backdrop-blur-md">
         <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4 sm:px-6">
           <div className="flex items-center gap-3">
