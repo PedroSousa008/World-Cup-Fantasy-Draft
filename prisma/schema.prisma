@@ -1,0 +1,552 @@
+// World Cup Fantasy Draft – Database Schema (Phase 1 Foundation)
+// Owner enters data → platform calculates everything else
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// AUTH & PLATFORM
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum UserRole {
+  OWNER
+  USER
+}
+
+model User {
+  id             String   @id @default(cuid())
+  email          String   @unique
+  passwordHash   String
+  username       String   @unique
+  role           UserRole @default(USER)
+  teamName       String?
+  nation         String?
+  profilePicture String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  accounts         Account[]
+  sessions         Session[]
+  fantasyTeam      FantasyTeam?
+  draftPicks       DraftPick[]
+  userPowers       UserPower[]
+  betsCreated      Bet[]              @relation("BetCreator")
+  betsAccepted     Bet[]              @relation("BetAcceptor")
+  predictions      Prediction[]
+  tournamentPreds  TournamentPrediction[]
+  achievements     UserAchievement[]
+
+  @@index([role])
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+/// Singleton platform configuration. ownerCreated=true permanently locks owner registration.
+model PlatformSettings {
+  id              String  @id @default("platform")
+  ownerCreated    Boolean @default(false)
+  bettingEnabled  Boolean @default(false)
+  bettingRules    String? @db.Text
+  updatedAt       DateTime @updatedAt
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TOURNAMENT DATA (Owner-managed)
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum PlayerPosition {
+  GK
+  DEF
+  MID
+  FWD
+}
+
+enum AvailabilityStatus {
+  AVAILABLE
+  INJURED
+  SUSPENDED
+  DOUBTFUL
+  UNAVAILABLE
+}
+
+enum QualificationStatus {
+  QUALIFIED
+  ELIMINATED
+  ACTIVE
+}
+
+model NationalTeam {
+  id          String              @id @default(cuid())
+  name        String              @unique
+  flagUrl     String?
+  groupName   String?
+  qualified   Boolean             @default(false)
+  eliminated  Boolean             @default(false)
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+
+  players     Player[]
+  homeMatches Match[]             @relation("HomeTeam")
+  awayMatches Match[]             @relation("AwayTeam")
+}
+
+model Player {
+  id                   String              @id @default(cuid())
+  name                 String
+  photoUrl             String?
+  position             PlayerPosition
+  nationality          String
+  club                 String?
+  availabilityStatus   AvailabilityStatus  @default(AVAILABLE)
+  qualificationStatus  QualificationStatus @default(ACTIVE)
+  nationalTeamId       String?
+  createdAt            DateTime            @default(now())
+  updatedAt            DateTime            @updatedAt
+
+  nationalTeam     NationalTeam?      @relation(fields: [nationalTeamId], references: [id])
+  matchEvents      MatchEvent[]
+  manOfTheMatchFor Match[]            @relation("ManOfTheMatch")
+  fantasyTeamSlots FantasyTeamPlayer[]
+  draftPicks       DraftPick[]
+
+  @@index([nationalTeamId])
+  @@index([position])
+}
+
+enum MatchStatus {
+  SCHEDULED
+  LIVE
+  FINISHED
+  POSTPONED
+  CANCELLED
+}
+
+model Match {
+  id              String      @id @default(cuid())
+  homeTeamId      String
+  awayTeamId      String
+  matchday        Int
+  scheduledAt     DateTime
+  homeScore       Int?
+  awayScore       Int?
+  status          MatchStatus @default(SCHEDULED)
+  manOfTheMatchId String?
+  bettingEnabled  Boolean     @default(false)
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  homeTeam      NationalTeam @relation("HomeTeam", fields: [homeTeamId], references: [id])
+  awayTeam      NationalTeam @relation("AwayTeam", fields: [awayTeamId], references: [id])
+  manOfTheMatch Player?      @relation("ManOfTheMatch", fields: [manOfTheMatchId], references: [id])
+  events        MatchEvent[]
+  bets          Bet[]
+  predictions   Prediction[]
+
+  @@index([matchday])
+  @@index([scheduledAt])
+}
+
+enum MatchEventType {
+  GOAL
+  ASSIST
+  YELLOW_CARD
+  RED_CARD
+  OWN_GOAL
+  PENALTY_SAVED
+  PENALTY_MISSED
+}
+
+model MatchEvent {
+  id        String         @id @default(cuid())
+  matchId   String
+  playerId  String
+  type      MatchEventType
+  minute    Int?
+  createdAt DateTime       @default(now())
+
+  match  Match  @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  player Player @relation(fields: [playerId], references: [id])
+
+  @@index([matchId])
+  @@index([playerId])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SCORING SYSTEM (Owner-customizable)
+// ─────────────────────────────────────────────────────────────────────────────
+
+model ScoringRule {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  name      String
+  points    Float
+  isActive  Boolean  @default(true)
+  updatedAt DateTime @updatedAt
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// FANTASY TEAMS & DRAFT
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum SquadSlot {
+  STARTING
+  BENCH
+}
+
+model FantasyTeam {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user    User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  players FantasyTeamPlayer[]
+}
+
+model FantasyTeamPlayer {
+  id            String    @id @default(cuid())
+  fantasyTeamId String
+  playerId      String
+  slot          SquadSlot @default(STARTING)
+  isCaptain     Boolean   @default(false)
+  isViceCaptain Boolean   @default(false)
+
+  fantasyTeam FantasyTeam @relation(fields: [fantasyTeamId], references: [id], onDelete: Cascade)
+  player      Player      @relation(fields: [playerId], references: [id])
+
+  @@unique([fantasyTeamId, playerId])
+}
+
+enum DraftType {
+  INITIAL
+  REDRAFT
+}
+
+enum DraftStatus {
+  PENDING
+  ACTIVE
+  COMPLETED
+}
+
+model Draft {
+  id        String      @id @default(cuid())
+  type      DraftType
+  status    DraftStatus @default(PENDING)
+  startedAt DateTime?
+  endedAt   DateTime?
+  createdAt DateTime    @default(now())
+
+  picks DraftPick[]
+}
+
+model DraftPick {
+  id         String   @id @default(cuid())
+  draftId    String
+  userId     String
+  playerId   String
+  pickNumber Int
+  createdAt  DateTime @default(now())
+
+  draft  Draft  @relation(fields: [draftId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id])
+  player Player @relation(fields: [playerId], references: [id])
+
+  @@index([draftId])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// POWERS / CARDS
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Power {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  name        String
+  description String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+
+  userPowers UserPower[]
+}
+
+model UserPower {
+  id        String   @id @default(cuid())
+  userId    String
+  powerId   String
+  used      Boolean  @default(false)
+  matchday  Int?
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  power Power @relation(fields: [powerId], references: [id])
+
+  @@index([userId])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PREDICTIONS
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum TournamentPredictionType {
+  WORLD_CUP_WINNER
+  RUNNER_UP
+  GOLDEN_BOOT
+  GOLDEN_BALL
+  BEST_YOUNG_PLAYER
+  BIGGEST_SURPRISE
+  BIGGEST_FLOP
+}
+
+model TournamentPrediction {
+  id        String                   @id @default(cuid())
+  userId    String
+  type      TournamentPredictionType
+  value     String
+  points    Float?
+  createdAt DateTime                 @default(now())
+  updatedAt DateTime                 @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, type])
+}
+
+enum MatchPredictionType {
+  MATCH_WINNER
+  CORRECT_SCORE
+  FIRST_GOALSCORER
+}
+
+model Prediction {
+  id        String              @id @default(cuid())
+  userId    String
+  matchId   String
+  type      MatchPredictionType
+  value     String
+  points    Float?
+  createdAt DateTime            @default(now())
+  updatedAt DateTime            @updatedAt
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  match Match @relation(fields: [matchId], references: [id])
+
+  @@unique([userId, matchId, type])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// BETTING
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum BetType {
+  MATCH
+  PLAYER
+  FANTASY
+  CUSTOM
+}
+
+enum StakeType {
+  POINTS
+  MONEY
+  DRINKS
+  DINNER
+  CUSTOM_PUNISHMENT
+  CUSTOM_REWARD
+}
+
+enum BetStatus {
+  PENDING
+  ACCEPTED
+  LIVE
+  WON
+  LOST
+  CANCELLED
+}
+
+model Bet {
+  id          String    @id @default(cuid())
+  creatorId   String
+  acceptorId  String?
+  matchId     String?
+  type        BetType
+  stakeType   StakeType
+  stakeValue  String
+  description String
+  status      BetStatus @default(PENDING)
+  isPromoted  Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  creator  User   @relation("BetCreator", fields: [creatorId], references: [id])
+  acceptor User?  @relation("BetAcceptor", fields: [acceptorId], references: [id])
+  match    Match? @relation(fields: [matchId], references: [id])
+
+  @@index([status])
+  @@index([creatorId])
+}
+
+model BetAnnouncement {
+  id        String   @id @default(cuid())
+  title     String
+  message   String   @db.Text
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// REWARDS & PUNISHMENTS
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum RankingCategory {
+  OVERALL
+  MATCHDAY
+  BETS
+  PREDICTIONS
+}
+
+model Reward {
+  id              String          @id @default(cuid())
+  title           String
+  description     String?
+  rankingCategory RankingCategory
+  rankingPosition Int
+  isCompleted     Boolean         @default(false)
+  assignedUserId  String?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+}
+
+model Punishment {
+  id              String          @id @default(cuid())
+  title           String
+  description     String?
+  rankingCategory RankingCategory
+  rankingPosition Int
+  isCompleted     Boolean         @default(false)
+  assignedUserId  String?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CALENDAR
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum CalendarEventType {
+  MATCHDAY
+  DRAFT
+  REDRAFT
+  BETTING_DEADLINE
+  PREDICTION_DEADLINE
+  CUSTOM
+}
+
+model CalendarEvent {
+  id          String            @id @default(cuid())
+  title       String
+  description String?
+  type        CalendarEventType
+  startsAt    DateTime
+  endsAt      DateTime?
+  matchId     String?
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  @@index([startsAt])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ACHIEVEMENTS
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Achievement {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  name        String
+  description String?
+  iconUrl     String?
+  createdAt   DateTime @default(now())
+
+  users UserAchievement[]
+}
+
+model UserAchievement {
+  id            String   @id @default(cuid())
+  userId        String
+  achievementId String
+  earnedAt      DateTime @default(now())
+
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  achievement Achievement @relation(fields: [achievementId], references: [id])
+
+  @@unique([userId, achievementId])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// POINTS SNAPSHOTS (calculated later – schema ready)
+// ─────────────────────────────────────────────────────────────────────────────
+
+model UserPointsSnapshot {
+  id              String   @id @default(cuid())
+  userId          String
+  matchday        Int?
+  fantasyPoints   Float    @default(0)
+  betPoints       Float    @default(0)
+  predictionPoints Float   @default(0)
+  totalPoints     Float    @default(0)
+  calculatedAt    DateTime @default(now())
+
+  @@unique([userId, matchday])
+  @@index([userId])
+}
+
+model PlayerPointsSnapshot {
+  id           String   @id @default(cuid())
+  playerId     String
+  matchId      String
+  matchday     Int
+  points       Float    @default(0)
+  calculatedAt DateTime @default(now())
+
+  @@unique([playerId, matchId])
+  @@index([matchday])
+}
