@@ -11,7 +11,7 @@ interface FormationPitchProps {
   captainId: string | null;
   viceCaptainId: string | null;
   onEmptyClick: (slotId: string) => void;
-  onPlayerClick: (slotId: string, playerId: string) => void;
+  onPlayerClick: (slotId: string) => void;
 }
 
 export function FormationPitch({
@@ -62,7 +62,7 @@ export function FormationPitch({
                     isCaptain={player?.id === captainId}
                     isViceCaptain={player?.id === viceCaptainId}
                     onEmptyClick={() => onEmptyClick(slot.id)}
-                    onPlayerClick={() => player && onPlayerClick(slot.id, player.id)}
+                    onPlayerClick={() => onPlayerClick(slot.id)}
                   />
                 );
               })}

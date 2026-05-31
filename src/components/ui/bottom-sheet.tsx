@@ -39,7 +39,7 @@ export function BottomSheet({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-end justify-center">
+    <div className={cn("fixed inset-0 z-[100] flex items-end justify-center", className)}>
       <button
         type="button"
         aria-label="Close"
@@ -54,8 +54,7 @@ export function BottomSheet({
           "relative w-full max-w-lg rounded-t-3xl bg-white shadow-[0_-8px_40px_rgba(8,17,32,0.2)]",
           "animate-in slide-in-from-bottom duration-300 ease-out",
           "max-h-[88dvh] overflow-y-auto overscroll-contain",
-          "pb-[env(safe-area-inset-bottom)]",
-          className
+          "pb-[env(safe-area-inset-bottom)]"
         )}
       >
         <div className="sticky top-0 z-10 flex flex-col items-center bg-white pt-3 pb-2">

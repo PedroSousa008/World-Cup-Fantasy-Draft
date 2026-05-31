@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { X, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { FantasyPlayerCard } from "@/components/player/fantasy-player-card";
@@ -13,7 +13,7 @@ interface PlayerPickerDrawerProps {
   onClose: () => void;
   slot: SquadSlot | null;
   players: FantasyPlayer[];
-  ownerPoolEmpty: boolean;
+  autoFocusSearch?: boolean;
   onSelect: (playerId: string) => void;
   onViewProfile: (playerId: string) => void;
 }
@@ -23,11 +23,12 @@ export function PlayerPickerDrawer({
   onClose,
   slot,
   players,
-  ownerPoolEmpty,
+  autoFocusSearch = false,
   onSelect,
   onViewProfile,
 }: PlayerPickerDrawerProps) {
   const [search, setSearch] = useState("");
+  const searchRef = useRef<HTMLInputElement>(null);
 
   const filtered = useMemo(() => {
     return players.filter((p) => {
@@ -35,6 +36,17 @@ export function PlayerPickerDrawer({
       return true;
     });
   }, [players, search]);
+
+  useEffect(() => {
+    if (open && autoFocusSearch) {
+      const timer = setTimeout(() => searchRef.current?.focus(), 100);
+      return () => clearTimeout(timer);
+    }
+  }, [open, autoFocusSearch]);
+
+  useEffect(() => {
+    if (!open) setSearch("");
+  }, [open]);
 
   if (!open) return null;
 
@@ -56,10 +68,11 @@ export function PlayerPickerDrawer({
         </button>
       </div>
 
-      <div className="space-y-3 border-b border-white/8 px-4 py-3">
+      <div className="border-b border-white/8 px-4 py-3">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/35" />
           <input
+            ref={searchRef}
             type="search"
             placeholder="Search player..."
             value={search}
@@ -67,23 +80,11 @@ export function PlayerPickerDrawer({
             className="h-11 w-full rounded-xl border-0 bg-white/10 pl-10 pr-4 text-sm text-white placeholder:text-white/35 focus:outline-none focus:ring-2 focus:ring-[#FFD700]/40"
           />
         </div>
-        <p className="text-[10px] text-white/40">
-          Only players assigned to your team by the Owner are available.
-        </p>
       </div>
 
       <div className="flex-1 overflow-y-auto px-4 py-3 pb-[env(safe-area-inset-bottom)]">
-        {ownerPoolEmpty ? (
-          <div className="py-12 text-center">
-            <p className="text-sm font-semibold text-[#FFD700]">No players assigned yet</p>
-            <p className="mt-2 text-xs text-white/40">
-              Wait for the Owner to assign drafted players to your team.
-            </p>
-          </div>
-        ) : filtered.length === 0 ? (
-          <p className="py-8 text-center text-sm text-white/40">
-            No available {slot?.position} players for this slot.
-          </p>
+        {filtered.length === 0 ? (
+          <p className="py-8 text-center text-sm text-white/40">No players available.</p>
         ) : (
           <div className="space-y-3">
             {filtered.map((player) => (

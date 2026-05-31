@@ -13,7 +13,7 @@ interface BenchPanelProps {
   getPlayer: (slotId: string) => FantasyPlayer | null;
   captainId: string | null;
   onEmptyClick: (slotId: string) => void;
-  onPlayerClick: (slotId: string, playerId: string) => void;
+  onPlayerClick: (slotId: string) => void;
 }
 
 export function BenchPanel({
@@ -56,7 +56,7 @@ export function BenchPanel({
                 player={player}
                 isCaptain={player?.id === captainId}
                 onEmptyClick={() => onEmptyClick(slot.id)}
-                onPlayerClick={() => player && onPlayerClick(slot.id, player.id)}
+                onPlayerClick={() => onPlayerClick(slot.id)}
               />
             );
           })}

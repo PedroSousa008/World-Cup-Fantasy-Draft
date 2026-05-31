@@ -2,10 +2,12 @@
 
 import { useSquad } from "@/contexts/squad-context";
 import { useRouter } from "next/navigation";
-import { FormationSelector, TeamSummaryCard, SquadValidationBanner } from "@/components/my-team/team/team-summary";
+import { useState } from "react";
+import { FormationSelector, TeamSummaryCard } from "@/components/my-team/team/team-summary";
 import { FormationPitch } from "@/components/my-team/team/formation-pitch";
 import { BenchPanel } from "@/components/my-team/team/bench-panel";
 import { PlayerPickerDrawer } from "@/components/my-team/team/player-picker-drawer";
+import { SlotActionSheet } from "@/components/my-team/team/slot-action-sheet";
 import { getNationFlag } from "@/lib/mock/my-team-data";
 
 interface FormationBuilderProps {
@@ -16,9 +18,16 @@ interface FormationBuilderProps {
 export function FormationBuilder({ teamName, selectedNation }: FormationBuilderProps) {
   const router = useRouter();
   const squad = useSquad();
+  const [actionSlotId, setActionSlotId] = useState<string | null>(null);
+  const [pickerFocusSearch, setPickerFocusSearch] = useState(false);
 
   const starterSlots = squad.slots.filter((s) => s.zone === "starter");
   const benchSlots = squad.slots.filter((s) => s.zone === "bench");
+
+  const actionSlot = actionSlotId
+    ? squad.slots.find((s) => s.id === actionSlotId) ?? null
+    : null;
+  const actionPlayer = actionSlotId ? squad.getSlotPlayer(actionSlotId) : null;
 
   const pickerSlot = squad.pickerSlotId
     ? squad.slots.find((s) => s.id === squad.pickerSlotId) ?? null
@@ -28,7 +37,12 @@ export function FormationBuilder({ teamName, selectedNation }: FormationBuilderP
     ? squad.availableForSlot(squad.pickerSlotId)
     : [];
 
-  const ownerPoolEmpty = squad.assignedPool.length === 0;
+  const openSlotActions = (slotId: string) => setActionSlotId(slotId);
+
+  const openPicker = (slotId: string, focusSearch = false) => {
+    setPickerFocusSearch(focusSearch);
+    squad.setPickerSlotId(slotId);
+  };
 
   return (
     <div className="space-y-4 pb-6">
@@ -42,16 +56,6 @@ export function FormationBuilder({ teamName, selectedNation }: FormationBuilderP
         totalSlots={18}
       />
 
-      {ownerPoolEmpty && (
-        <div className="mx-4 rounded-xl border border-[#FFD700]/25 bg-[#FFD700]/8 px-4 py-3">
-          <p className="text-xs font-semibold text-[#FFD700]">
-            Your squad is empty. The Owner will assign drafted players to your team after the draft completes.
-          </p>
-        </div>
-      )}
-
-      <SquadValidationBanner warnings={squad.validation.warnings} />
-
       <FormationSelector value={squad.formationId} onChange={squad.changeFormation} />
 
       <FormationPitch
@@ -59,10 +63,8 @@ export function FormationBuilder({ teamName, selectedNation }: FormationBuilderP
         getPlayer={squad.getSlotPlayer}
         captainId={squad.captainId}
         viceCaptainId={squad.viceCaptainId}
-        onEmptyClick={(slotId) => squad.setPickerSlotId(slotId)}
-        onPlayerClick={(slotId, playerId) => {
-          router.push(`/my-team/player/${playerId}?slot=${slotId}`);
-        }}
+        onEmptyClick={openSlotActions}
+        onPlayerClick={openSlotActions}
       />
 
       <BenchPanel
@@ -71,24 +73,50 @@ export function FormationBuilder({ teamName, selectedNation }: FormationBuilderP
         benchSlots={benchSlots}
         getPlayer={squad.getSlotPlayer}
         captainId={squad.captainId}
-        onEmptyClick={(slotId) => squad.setPickerSlotId(slotId)}
-        onPlayerClick={(slotId, playerId) => {
-          router.push(`/my-team/player/${playerId}?slot=${slotId}`);
+        onEmptyClick={openSlotActions}
+        onPlayerClick={openSlotActions}
+      />
+
+      <SlotActionSheet
+        open={!!actionSlotId}
+        onClose={() => setActionSlotId(null)}
+        slot={actionSlot}
+        player={actionPlayer}
+        isCaptain={actionPlayer?.id === squad.captainId}
+        isViceCaptain={actionPlayer?.id === squad.viceCaptainId}
+        substitutionTargets={actionSlotId ? squad.getSubstitutionTargets(actionSlotId) : []}
+        onAddPlayer={() => actionSlotId && openPicker(actionSlotId)}
+        onSearchPlayer={() => actionSlotId && openPicker(actionSlotId, true)}
+        onViewProfile={() => {
+          if (actionPlayer && actionSlotId) {
+            router.push(`/my-team/player/${actionPlayer.id}?slot=${actionSlotId}`);
+          }
         }}
+        onSubstitution={(targetSlotId) => {
+          if (actionSlotId) squad.substitutePlayers(actionSlotId, targetSlotId);
+        }}
+        onMakeCaptain={() => actionPlayer && squad.setCaptain(actionPlayer.id)}
+        onMakeViceCaptain={() => actionPlayer && squad.setViceCaptain(actionPlayer.id)}
+        onRemove={() => actionSlotId && squad.removePlayer(actionSlotId)}
       />
 
       <PlayerPickerDrawer
         open={!!squad.pickerSlotId}
-        onClose={() => squad.setPickerSlotId(null)}
+        onClose={() => {
+          squad.setPickerSlotId(null);
+          setPickerFocusSearch(false);
+        }}
         slot={pickerSlot}
         players={pickerPlayers}
-        ownerPoolEmpty={ownerPoolEmpty}
+        autoFocusSearch={pickerFocusSearch}
         onSelect={(playerId) => {
           if (squad.pickerSlotId) squad.assignPlayer(squad.pickerSlotId, playerId);
         }}
         onViewProfile={(playerId) => {
+          const slotId = squad.pickerSlotId;
           squad.setPickerSlotId(null);
-          router.push(`/my-team/player/${playerId}?slot=${squad.pickerSlotId ?? ""}`);
+          setPickerFocusSearch(false);
+          router.push(`/my-team/player/${playerId}?slot=${slotId ?? ""}`);
         }}
       />
     </div>

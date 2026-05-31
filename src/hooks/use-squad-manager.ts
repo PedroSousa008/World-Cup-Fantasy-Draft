@@ -131,14 +131,22 @@ export function useSquadManager(teamName: string) {
       const slot = slots.find((s) => s.id === slotId);
       if (!slot) return [];
 
+      const player = getSlotPlayer(slotId);
+      if (!player) return [];
+
+      const position = player.position;
       const oppositeZone = slot.zone === "starter" ? "bench" : "starter";
+
       return slots
-        .filter((s) => s.zone === oppositeZone && s.position === slot.position)
+        .filter((s) => s.zone === oppositeZone)
         .map((s) => ({
           slot: s,
           player: getSlotPlayer(s.id),
         }))
-        .filter((t) => t.player !== null) as { slot: (typeof slots)[0]; player: FantasyPlayer }[];
+        .filter(
+          (t): t is { slot: (typeof slots)[0]; player: FantasyPlayer } =>
+            t.player !== null && t.player.position === position
+        );
     },
     [slots, getSlotPlayer]
   );
@@ -149,6 +157,11 @@ export function useSquadManager(teamName: string) {
       if (!slot) return [];
 
       const assignedIds = getAssignedPlayerIds();
+
+      if (slot.zone === "bench") {
+        return assignedPool.filter((p) => !assignedIds.has(p.id));
+      }
+
       return assignedPool.filter(
         (p) => p.position === slot.position && !assignedIds.has(p.id)
       );
