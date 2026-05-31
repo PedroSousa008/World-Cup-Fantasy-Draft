@@ -55,22 +55,3 @@ export function SwipeableTabBar({
     </div>
   );
 }
-
-export function useSwipeTabs(activeTab: string, basePath = "/my-team") {
-  const router = useRouter();
-  const tabs = MY_TEAM_TABS;
-  const currentIndex = tabs.findIndex((t) => t.slug === activeTab);
-
-  const onTouchSwipe = (deltaX: number) => {
-    const threshold = 60;
-    if (Math.abs(deltaX) < threshold) return;
-
-    if (deltaX < 0 && currentIndex < tabs.length - 1) {
-      router.push(`${basePath}/${tabs[currentIndex + 1].slug}`);
-    } else if (deltaX > 0 && currentIndex > 0) {
-      router.push(`${basePath}/${tabs[currentIndex - 1].slug}`);
-    }
-  };
-
-  return { onTouchSwipe, currentIndex, totalTabs: tabs.length };
-}

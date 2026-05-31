@@ -11,10 +11,12 @@ export interface FantasyPlayer {
   matchdayPoints: number;
   matchStatus: MatchStatus;
   upcomingFixture: string;
+  matchDate?: string;
   goals: number;
   assists: number;
   yellowCards: number;
   redCards: number;
+  motmAwards: number;
   isDrafted: boolean;
   matchHistory: { matchday: number; opponent: string; points: number }[];
 }
@@ -77,14 +79,10 @@ export function validateSquad(
   };
 }
 
-export function computeTeamStrength(players: Record<string, FantasyPlayer>, assignments: Record<string, string | null>) {
+export function computeSquadPoints(
+  players: Record<string, FantasyPlayer>,
+  assignments: Record<string, string | null>
+): number {
   const ids = Object.values(assignments).filter(Boolean) as string[];
-  const squad = ids.map((id) => players[id]).filter(Boolean);
-  const totalPoints = squad.reduce((s, p) => s + p.totalPoints, 0);
-  const nations = new Set(squad.map((p) => p.nation));
-  const diversity = Math.min(100, Math.round((nations.size / 8) * 100));
-  const strength = Math.min(100, Math.round(totalPoints / 18));
-  const projection = Math.round(totalPoints * 1.08);
-
-  return { totalPoints, diversity, strength, projection };
+  return ids.reduce((sum, id) => sum + (players[id]?.totalPoints ?? 0), 0);
 }

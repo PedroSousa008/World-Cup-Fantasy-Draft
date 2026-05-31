@@ -27,6 +27,7 @@ export function AppShell({ children, user }: AppShellProps) {
   const isOwner = user.role === UserRole.OWNER;
 
   const isMyTeam = pathname.startsWith("/my-team");
+  const isPlayerPage = pathname.includes("/my-team/player/");
 
   return (
     <div className="relative min-h-screen text-white">
@@ -89,7 +90,7 @@ export function AppShell({ children, user }: AppShellProps) {
         </main>
       </div>
 
-      <BottomNav userRole={user.role} />
+      <BottomNav userRole={user.role} hidden={isPlayerPage} />
     </div>
   );
 }

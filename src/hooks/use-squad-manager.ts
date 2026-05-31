@@ -10,24 +10,24 @@ import {
 import {
   type FantasyPlayer,
   validateSquad,
-  computeTeamStrength,
+  computeSquadPoints,
 } from "@/lib/squad/squad-utils";
 import {
   buildPlayersMap,
-  getInitialAssignments,
+  getEmptyAssignments,
+  getOwnerAssignedPlayers,
 } from "@/lib/mock/available-players";
 
-export function useSquadManager() {
+export function useSquadManager(teamName: string) {
+  const assignedPool = useMemo(() => getOwnerAssignedPlayers(teamName), [teamName]);
+
   const [formationId, setFormationId] = useState<FormationId>("4-3-3");
-  const [players] = useState<Record<string, FantasyPlayer>>(buildPlayersMap);
-  const [assignments, setAssignments] = useState<Record<string, string | null>>(() =>
-    getInitialAssignments(4, 3, 3)
-  );
-  const [captainId, setCaptainId] = useState<string | null>("4");
-  const [viceCaptainId, setViceCaptainId] = useState<string | null>("5");
+  const [players] = useState<Record<string, FantasyPlayer>>(() => buildPlayersMap(assignedPool));
+  const [assignments, setAssignments] = useState<Record<string, string | null>>(getEmptyAssignments);
+  const [captainId, setCaptainId] = useState<string | null>(null);
+  const [viceCaptainId, setViceCaptainId] = useState<string | null>(null);
   const [benchOpen, setBenchOpen] = useState(false);
   const [pickerSlotId, setPickerSlotId] = useState<string | null>(null);
-  const [detailPlayerId, setDetailPlayerId] = useState<string | null>(null);
 
   const formation = getFormation(formationId);
   const slots = useMemo(() => buildAllSlots(formation), [formation]);
@@ -35,8 +35,8 @@ export function useSquadManager() {
     () => validateSquad(assignments, players),
     [assignments, players]
   );
-  const strength = useMemo(
-    () => computeTeamStrength(players, assignments),
+  const totalPoints = useMemo(
+    () => computeSquadPoints(players, assignments),
     [players, assignments]
   );
 
@@ -85,15 +85,21 @@ export function useSquadManager() {
   }, []);
 
   const removePlayer = useCallback((slotId: string) => {
-    setAssignments((prev) => ({ ...prev, [slotId]: null }));
-    setDetailPlayerId(null);
+    setAssignments((prev) => {
+      const removedId = prev[slotId];
+      if (removedId) {
+        setCaptainId((c) => (c === removedId ? null : c));
+        setViceCaptainId((v) => (v === removedId ? null : v));
+      }
+      return { ...prev, [slotId]: null };
+    });
   }, []);
 
-  const swapSlots = useCallback((slotA: string, slotB: string) => {
+  const substitutePlayers = useCallback((fromSlotId: string, toSlotId: string) => {
     setAssignments((prev) => {
-      const a = prev[slotA];
-      const b = prev[slotB];
-      return { ...prev, [slotA]: b ?? null, [slotB]: a ?? null };
+      const fromPlayer = prev[fromSlotId];
+      const toPlayer = prev[toSlotId];
+      return { ...prev, [fromSlotId]: toPlayer ?? null, [toSlotId]: fromPlayer ?? null };
     });
   }, []);
 
@@ -110,7 +116,7 @@ export function useSquadManager() {
   const getSlotPlayer = useCallback(
     (slotId: string) => {
       const pid = assignments[slotId];
-      return pid ? players[pid] : null;
+      return pid ? players[pid] ?? null : null;
     },
     [assignments, players]
   );
@@ -120,30 +126,61 @@ export function useSquadManager() {
     [assignments]
   );
 
+  const getSubstitutionTargets = useCallback(
+    (slotId: string) => {
+      const slot = slots.find((s) => s.id === slotId);
+      if (!slot) return [];
+
+      const oppositeZone = slot.zone === "starter" ? "bench" : "starter";
+      return slots
+        .filter((s) => s.zone === oppositeZone && s.position === slot.position)
+        .map((s) => ({
+          slot: s,
+          player: getSlotPlayer(s.id),
+        }))
+        .filter((t) => t.player !== null) as { slot: (typeof slots)[0]; player: FantasyPlayer }[];
+    },
+    [slots, getSlotPlayer]
+  );
+
+  const availableForSlot = useCallback(
+    (slotId: string) => {
+      const slot = slots.find((s) => s.id === slotId);
+      if (!slot) return [];
+
+      const assignedIds = getAssignedPlayerIds();
+      return assignedPool.filter(
+        (p) => p.position === slot.position && !assignedIds.has(p.id)
+      );
+    },
+    [slots, assignedPool, getAssignedPlayerIds]
+  );
+
   return {
     formationId,
     formation,
     slots,
     assignments,
     players,
+    assignedPool,
     captainId,
     viceCaptainId,
     benchOpen,
     setBenchOpen,
     pickerSlotId,
     setPickerSlotId,
-    detailPlayerId,
-    setDetailPlayerId,
     validation,
-    strength,
+    totalPoints,
     changeFormation,
     assignPlayer,
     removePlayer,
-    swapSlots,
+    substitutePlayers,
     setCaptain,
     setViceCaptain,
     getSlotPlayer,
     getAssignedPlayerIds,
+    getSubstitutionTargets,
+    availableForSlot,
   };
 }
 

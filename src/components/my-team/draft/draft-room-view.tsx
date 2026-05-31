@@ -1,17 +1,13 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { Search } from "lucide-react";
 import { PillTabs } from "@/components/ui/segmented-control";
-import { Button } from "@/components/ui/button";
-import { BottomSheet } from "@/components/ui/bottom-sheet";
-import { PlayerAvatar } from "@/components/my-team/team/player-card";
-import {
-  MOCK_DRAFT_PLAYERS,
-  MOCK_DRAFT_FEED,
-  getNationFlag,
-  type DraftPlayer,
-} from "@/lib/mock/my-team-data";
+import { FantasyPlayerCard } from "@/components/player/fantasy-player-card";
+import { SHOWCASE_PLAYERS } from "@/lib/mock/showcase-players";
+import { MOCK_DRAFT_FEED } from "@/lib/mock/my-team-data";
+import type { FantasyPlayer } from "@/lib/squad/squad-utils";
 
 const FILTERS: { value: string; label: string }[] = [
   { value: "all", label: "All" },
@@ -22,11 +18,10 @@ const FILTERS: { value: string; label: string }[] = [
 ];
 
 export function DraftRoomView() {
+  const router = useRouter();
   const [filter, setFilter] = useState("all");
   const [search, setSearch] = useState("");
   const [timer, setTimer] = useState(38);
-  const [selectedPlayer, setSelectedPlayer] = useState<DraftPlayer | null>(null);
-  const [sheetOpen, setSheetOpen] = useState(false);
   const [mode, setMode] = useState<"draft" | "redraft">("draft");
 
   useEffect(() => {
@@ -36,7 +31,7 @@ export function DraftRoomView() {
     return () => clearInterval(interval);
   }, []);
 
-  const filtered = MOCK_DRAFT_PLAYERS.filter((p) => {
+  const filtered = SHOWCASE_PLAYERS.filter((p) => {
     if (filter !== "all" && p.position !== filter) return false;
     if (search && !p.name.toLowerCase().includes(search.toLowerCase())) return false;
     return true;
@@ -47,16 +42,13 @@ export function DraftRoomView() {
 
   return (
     <div className="pb-4">
-      {/* Draft status header */}
       <div className="space-y-4 px-4">
         <div className="flex gap-2">
           <button
             type="button"
             onClick={() => setMode("draft")}
             className={`min-h-[44px] flex-1 rounded-xl text-sm font-bold transition-all active:scale-[0.97] ${
-              mode === "draft"
-                ? "bg-[#0066FF] text-white"
-                : "bg-white/10 text-white/60"
+              mode === "draft" ? "bg-[#0066FF] text-white" : "bg-white/10 text-white/60"
             }`}
           >
             Initial Draft
@@ -65,9 +57,7 @@ export function DraftRoomView() {
             type="button"
             onClick={() => setMode("redraft")}
             className={`min-h-[44px] flex-1 rounded-xl text-sm font-bold transition-all active:scale-[0.97] ${
-              mode === "redraft"
-                ? "bg-[#0066FF] text-white"
-                : "bg-white/10 text-white/60"
+              mode === "redraft" ? "bg-[#0066FF] text-white" : "bg-white/10 text-white/60"
             }`}
           >
             Redraft (10 picks)
@@ -98,9 +88,12 @@ export function DraftRoomView() {
             </span>
           </div>
         </div>
+
+        <p className="rounded-xl bg-[#FFD700]/10 px-3 py-2 text-xs text-[#FFD700]">
+          Draft picks grant ownership only. The Owner assigns players to teams after the draft.
+        </p>
       </div>
 
-      {/* Sticky filter bar */}
       <div className="sticky top-14 z-30 space-y-3 bg-[#081120]/80 px-4 py-3 backdrop-blur-md">
         <PillTabs options={FILTERS} value={filter} onChange={setFilter} />
         <div className="relative">
@@ -110,43 +103,22 @@ export function DraftRoomView() {
             placeholder="Search players..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="h-11 w-full rounded-xl border-0 bg-white/10 pl-10 pr-4 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-[#0066FF]/40"
+            className="h-11 w-full rounded-xl border-0 bg-white/10 pl-10 pr-4 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-[#FFD700]/40"
           />
         </div>
       </div>
 
-      {/* Available players */}
-      <div className="space-y-2 px-4 pt-2">
-        <p className="text-xs font-bold uppercase tracking-wide text-white/45">
-          Available Players
-        </p>
-        {filtered.map((player) => (
-          <button
-            key={player.id}
-            type="button"
-            onClick={() => {
-              setSelectedPlayer(player);
-              setSheetOpen(true);
-            }}
-            className="wc-card flex w-full items-center gap-3 p-3 text-left active:scale-[0.98]"
-          >
-            <PlayerAvatar name={player.name} size="sm" />
-            <div className="min-w-0 flex-1">
-              <p className="truncate font-bold text-[#081120]">{player.name}</p>
-              <p className="text-xs text-[#081120]/50">
-                {player.position} · {getNationFlag(player.nation)} · {player.club}
-              </p>
-            </div>
-            <span className="text-xs font-bold text-[#0066FF]">Draft →</span>
-          </button>
-        ))}
+      <div className="space-y-3 px-4 pt-2">
+        <p className="text-xs font-bold uppercase tracking-wide text-white/45">Available Players</p>
+        <div className="grid grid-cols-2 gap-3">
+          {filtered.map((player) => (
+            <DraftPlayerTile key={player.id} player={player} onTap={() => router.push(`/my-team/player/${player.id}`)} />
+          ))}
+        </div>
       </div>
 
-      {/* Live feed */}
       <div className="mt-6 px-4">
-        <p className="mb-3 text-xs font-bold uppercase tracking-wide text-white/45">
-          Live Draft Feed
-        </p>
+        <p className="mb-3 text-xs font-bold uppercase tracking-wide text-white/45">Live Draft Feed</p>
         <div className="space-y-2">
           {MOCK_DRAFT_FEED.map((item) => (
             <div
@@ -162,30 +134,14 @@ export function DraftRoomView() {
           ))}
         </div>
       </div>
-
-      <BottomSheet
-        open={sheetOpen}
-        onClose={() => setSheetOpen(false)}
-        title={selectedPlayer?.name}
-      >
-        {selectedPlayer && (
-          <div className="space-y-4">
-            <div className="flex items-center gap-4">
-              <PlayerAvatar name={selectedPlayer.name} size="lg" />
-              <div>
-                <p className="text-sm text-[#081120]/60">
-                  {selectedPlayer.position} · {getNationFlag(selectedPlayer.nation)}{" "}
-                  {selectedPlayer.nation}
-                </p>
-                <p className="font-semibold text-[#081120]">{selectedPlayer.club}</p>
-              </div>
-            </div>
-            <Button className="h-14 w-full text-base" onClick={() => setSheetOpen(false)}>
-              Draft {selectedPlayer.name}
-            </Button>
-          </div>
-        )}
-      </BottomSheet>
     </div>
+  );
+}
+
+function DraftPlayerTile({ player, onTap }: { player: FantasyPlayer; onTap: () => void }) {
+  return (
+    <button type="button" onClick={onTap} className="text-left active:scale-[0.98]">
+      <FantasyPlayerCard player={player} size="bench" />
+    </button>
   );
 }

@@ -30,10 +30,8 @@ export function FormationPitch({
   };
 
   return (
-    <div className="relative mx-4 overflow-hidden rounded-3xl border border-[#00C853]/25 shadow-[0_8px_40px_rgba(0,200,83,0.12)]">
-      {/* Pitch surface */}
+    <div className="relative mx-4 overflow-hidden rounded-3xl border border-[#FFD700]/20 shadow-[0_8px_40px_rgba(255,215,0,0.08)]">
       <div className="relative bg-gradient-to-b from-[#1a6b38] via-[#1e7a40] to-[#155a30] px-3 py-5">
-        {/* Pitch markings */}
         <div className="pointer-events-none absolute inset-0 opacity-[0.12]">
           <div className="absolute inset-x-4 inset-y-3 rounded-2xl border-2 border-white" />
           <div className="absolute left-1/2 top-3 bottom-3 w-px -translate-x-1/2 bg-white" />
@@ -42,8 +40,7 @@ export function FormationPitch({
           <div className="absolute bottom-3 left-1/2 h-10 w-20 -translate-x-1/2 border-2 border-t-0 border-white" />
         </div>
 
-        {/* Subtle ball-pattern overlay */}
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(0,102,255,0.08),transparent_50%),radial-gradient(circle_at_70%_80%,rgba(0,200,83,0.06),transparent_50%)]" />
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(255,215,0,0.06),transparent_50%)]" />
 
         <div className="relative space-y-3 transition-all duration-500 ease-out">
           {(["FWD", "MID", "DEF", "GK"] as const).map((line) => (
@@ -66,7 +63,6 @@ export function FormationPitch({
                     isViceCaptain={player?.id === viceCaptainId}
                     onEmptyClick={() => onEmptyClick(slot.id)}
                     onPlayerClick={() => player && onPlayerClick(slot.id, player.id)}
-                    draggable
                   />
                 );
               })}

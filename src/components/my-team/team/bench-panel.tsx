@@ -40,11 +40,11 @@ export function BenchPanel({
       <div
         className={cn(
           "overflow-hidden transition-all duration-500 ease-out",
-          open ? "mt-3 max-h-[200px] opacity-100" : "max-h-0 opacity-0"
+          open ? "mt-3 max-h-[160px] opacity-100" : "max-h-0 opacity-0"
         )}
       >
         <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-white/40">
-          Bench · drag to swap with starters
+          Bench · tap player to substitute
         </p>
         <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-none snap-x snap-mandatory">
           {benchSlots.map((slot) => {

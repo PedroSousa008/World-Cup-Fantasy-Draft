@@ -9,11 +9,14 @@ import { Shield } from "lucide-react";
 
 interface BottomNavProps {
   userRole: UserRole;
+  hidden?: boolean;
 }
 
-export function BottomNav({ userRole }: BottomNavProps) {
+export function BottomNav({ userRole, hidden }: BottomNavProps) {
   const pathname = usePathname();
   const isOwner = userRole === UserRole.OWNER;
+
+  if (hidden) return null;
 
   return (
     <nav className="wc-glass fixed bottom-0 left-0 right-0 z-50 border-t md:hidden">

@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { SegmentedControl } from "@/components/ui/segmented-control";
+import { FantasyPlayerCard } from "@/components/player/fantasy-player-card";
+import { getShowcasePlayer } from "@/lib/mock/showcase-players";
 import {
   MOCK_OVERALL_RANKINGS,
   MOCK_MATCHDAY_RANKINGS,
@@ -10,6 +12,7 @@ import {
   getNationFlag,
 } from "@/lib/mock/my-team-data";
 import { cn } from "@/lib/utils";
+import { useRouter } from "next/navigation";
 
 const RANKING_TABS = [
   { value: "overall", label: "Overall" },
@@ -80,6 +83,7 @@ function RankingCard({
 }
 
 export function RankingsView() {
+  const router = useRouter();
   const [tab, setTab] = useState("overall");
 
   return (
@@ -120,22 +124,31 @@ export function RankingsView() {
 
       {tab === "players" && (
         <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-none snap-x snap-mandatory">
-          {MOCK_PLAYER_RANKINGS.map((item) => (
-            <div
-              key={item.label}
-              className="wc-card w-[160px] shrink-0 snap-start p-4 hover:transform-none"
-            >
-              <p className="text-[10px] font-bold uppercase tracking-wide text-[#0066FF]">
-                {item.label}
-              </p>
-              <p className="mt-2 truncate text-base font-bold text-[#081120]">
-                {item.player}
-              </p>
-              <p className="text-sm text-[#081120]/50">
-                {getNationFlag(item.nation)} {item.value}
-              </p>
-            </div>
-          ))}
+          {MOCK_PLAYER_RANKINGS.map((item) => {
+            const player = getShowcasePlayer(item.player);
+            return (
+              <button
+                key={item.label}
+                type="button"
+                onClick={() => player && router.push(`/my-team/player/${player.id}`)}
+                className="w-[160px] shrink-0 snap-start text-left active:scale-[0.98]"
+              >
+                {player ? (
+                  <FantasyPlayerCard player={player} size="bench" />
+                ) : (
+                  <div className="wc-card w-[160px] p-4 hover:transform-none">
+                    <p className="text-[10px] font-bold uppercase tracking-wide text-[#0066FF]">
+                      {item.label}
+                    </p>
+                    <p className="mt-2 truncate text-base font-bold text-[#081120]">{item.player}</p>
+                    <p className="text-sm text-[#081120]/50">
+                      {getNationFlag(item.nation)} {item.value}
+                    </p>
+                  </div>
+                )}
+              </button>
+            );
+          })}
         </div>
       )}
 
