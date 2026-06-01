@@ -15,7 +15,7 @@ export function AuthShell({ children, footer }: AuthShellProps) {
       <WorldCupBackground theme="auth" />
       <div className="animate-wc-flow-in mb-8">
         <Link href="/">
-          <AppLogo showName size="lg" />
+          <AppLogo showName={false} size="lg" priority />
         </Link>
       </div>
       <div className="animate-wc-flow-in w-full max-w-md" style={{ animationDelay: "0.08s" }}>

@@ -17,8 +17,8 @@ export const APP_ICON_FILE = "icon.png";
 export const APP_LOGO_PATH = "/logo.png";
 export const APP_ICON_PATH = "/icon.png";
 
-export const APP_NAME = process.env.NEXT_PUBLIC_APP_NAME ?? "World Cup Fantasy Draft";
-export const APP_SHORT_NAME = process.env.NEXT_PUBLIC_APP_SHORT_NAME ?? "WC Fantasy";
+export const APP_NAME = process.env.NEXT_PUBLIC_APP_NAME ?? "World Cup Fantasy Draft 2026";
+export const APP_SHORT_NAME = process.env.NEXT_PUBLIC_APP_SHORT_NAME ?? "WC Fantasy Draft";
 
 /** Absolute filesystem location (for server-side existence checks) */
 export function getLogoFilePath(cwd = process.cwd()) {

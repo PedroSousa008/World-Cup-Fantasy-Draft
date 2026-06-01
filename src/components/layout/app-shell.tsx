@@ -40,7 +40,7 @@ export function AppShell({ children, user }: AppShellProps) {
           }`}
         >
           <Link href="/my-team" className="min-w-0 shrink">
-            <AppLogo showName={!isMyTeam} />
+            <AppLogo showName={false} size="md" priority />
           </Link>
 
           <div className="flex items-center gap-2">

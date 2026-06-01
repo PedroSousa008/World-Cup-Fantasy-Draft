@@ -23,10 +23,12 @@ export default async function HomePage() {
 
       <div className="animate-wc-flow-in mx-auto w-full max-w-xl text-center">
         <div className="mb-8 flex justify-center">
-          <AppLogoStatic branding={branding} showName={false} size="xl" />
+          <AppLogoStatic branding={branding} showName={false} size="hero" priority />
         </div>
 
-        <h1 className="text-display text-4xl sm:text-5xl">{branding.appName}</h1>
+        {!branding.logoSrc && (
+          <h1 className="text-display text-4xl sm:text-5xl">{branding.appName}</h1>
+        )}
         <p className="text-body mx-auto mt-5 max-w-md text-base leading-relaxed">
           A premium private competition for the World Cup. Draft players, make
           predictions, place bets, and compete with your friends.
