@@ -3,40 +3,31 @@
 import { useRouter, useSearchParams } from "next/navigation";
 import { useSquad } from "@/contexts/squad-context";
 import { PlayerDetailView } from "@/components/my-team/team/player-detail-view";
-import { SHOWCASE_PLAYERS } from "@/lib/mock/showcase-players";
-import type { FantasyPlayer } from "@/lib/squad/squad-utils";
+import type { DbPlayerDetails } from "@/lib/rankings/get-player-details";
 
 interface PlayerPageClientProps {
   playerId: string;
+  dbPlayer: DbPlayerDetails;
 }
 
-export function PlayerPageClient({ playerId }: PlayerPageClientProps) {
+export function PlayerPageClient({ playerId, dbPlayer }: PlayerPageClientProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const slotId = searchParams.get("slot");
+  const fromRankings = searchParams.get("from") === "rankings";
   const squad = useSquad();
 
   const squadPlayer = squad.players[playerId] ?? null;
-  const showcasePlayer = SHOWCASE_PLAYERS.find((p) => p.id === playerId) ?? null;
-  const player: FantasyPlayer | null = squadPlayer ?? showcasePlayer;
+  const player = squadPlayer ?? dbPlayer;
 
   const slot = slotId ? squad.slots.find((s) => s.id === slotId) ?? null : null;
-  const isInSquad = !!(slot && player && squad.assignments[slot.id] === playerId);
+  const isInSquad = !!(slot && squadPlayer && squad.assignments[slot.id] === playerId);
 
-  if (!player) {
-    return (
-      <div className="flex min-h-[100dvh] flex-col items-center justify-center bg-[#081120] px-4">
-        <p className="text-sm text-white/50">Player not found.</p>
-        <button
-          type="button"
-          onClick={() => router.back()}
-          className="mt-4 rounded-xl bg-white/10 px-6 py-3 text-sm font-bold text-white"
-        >
-          Go Back
-        </button>
-      </div>
-    );
-  }
+  const backHref = fromRankings
+    ? "/my-team/rankings"
+    : isInSquad
+      ? "/my-team/team"
+      : "/my-team/rankings";
 
   if (!isInSquad) {
     return (
@@ -47,10 +38,13 @@ export function PlayerPageClient({ playerId }: PlayerPageClientProps) {
         isViceCaptain={false}
         substitutionTargets={[]}
         readOnly
-        backHref="/my-team/draft"
+        backHref={backHref}
+        ownerTeamName={dbPlayer.ownerTeamName}
+        minutesPlayed={dbPlayer.minutesPlayed}
+        ownGoals={dbPlayer.ownGoals}
         onMakeCaptain={() => {}}
         onMakeViceCaptain={() => {}}
-        onRemove={() => router.back()}
+        onRemove={() => router.push(backHref)}
         onSubstitute={() => {}}
       />
     );
@@ -63,6 +57,10 @@ export function PlayerPageClient({ playerId }: PlayerPageClientProps) {
       isCaptain={squad.captainId === player.id}
       isViceCaptain={squad.viceCaptainId === player.id}
       substitutionTargets={squad.getSubstitutionTargets(slot!.id)}
+      backHref={backHref}
+      minutesPlayed={dbPlayer.minutesPlayed}
+      ownGoals={dbPlayer.ownGoals}
+      ownerTeamName={dbPlayer.ownerTeamName}
       onMakeCaptain={() => squad.setCaptain(player.id)}
       onMakeViceCaptain={() => squad.setViceCaptain(player.id)}
       onRemove={() => {

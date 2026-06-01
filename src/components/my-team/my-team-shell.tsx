@@ -5,6 +5,7 @@ import { TeamView } from "@/components/my-team/team/team-view";
 import { RankingsView } from "@/components/my-team/rankings/rankings-view";
 import { DraftRoomView } from "@/components/my-team/draft/draft-room-view";
 import { PowersView } from "@/components/my-team/powers/powers-view";
+import type { RankingsData } from "@/lib/rankings/types";
 
 interface MyTeamShellProps {
   activeTab: string;
@@ -13,9 +14,10 @@ interface MyTeamShellProps {
     selectedNation: string;
     username: string;
   };
+  rankingsData?: RankingsData;
 }
 
-export function MyTeamShell({ activeTab, user }: MyTeamShellProps) {
+export function MyTeamShell({ activeTab, user, rankingsData }: MyTeamShellProps) {
   return (
     <div className="mx-auto w-full max-w-lg overflow-x-hidden">
       {/* Sub-tabs: in document flow, directly under header — never overlaps content */}
@@ -27,7 +29,9 @@ export function MyTeamShell({ activeTab, user }: MyTeamShellProps) {
         {activeTab === "team" && (
           <TeamView teamName={user.teamName} selectedNation={user.selectedNation} />
         )}
-        {activeTab === "rankings" && <RankingsView />}
+        {activeTab === "rankings" && rankingsData && (
+          <RankingsView data={rankingsData} />
+        )}
         {activeTab === "draft" && <DraftRoomView />}
         {activeTab === "powers" && <PowersView />}
       </div>

@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { MyTeamShell } from "@/components/my-team/my-team-shell";
 import { MY_TEAM_TABS } from "@/lib/navigation";
+import { getRankingsData } from "@/lib/rankings/get-rankings-data";
 
 interface PageProps {
   params: Promise<{ tab: string }>;
@@ -15,6 +16,9 @@ export default async function MyTeamTabPage({ params }: PageProps) {
   const session = await auth();
   const user = session!.user;
 
+  const rankingsData =
+    tab === "rankings" ? await getRankingsData(user.teamName) : undefined;
+
   return (
     <MyTeamShell
       activeTab={tab}
@@ -23,6 +27,7 @@ export default async function MyTeamTabPage({ params }: PageProps) {
         selectedNation: user.selectedNation,
         username: user.username,
       }}
+      rankingsData={rankingsData}
     />
   );
 }

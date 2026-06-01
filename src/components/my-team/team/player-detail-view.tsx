@@ -106,6 +106,9 @@ interface PlayerDetailViewProps {
   substitutionTargets: { slot: SquadSlot; player: FantasyPlayer }[];
   readOnly?: boolean;
   backHref?: string;
+  ownerTeamName?: string | null;
+  minutesPlayed?: number;
+  ownGoals?: number;
   onMakeCaptain: () => void;
   onMakeViceCaptain: () => void;
   onRemove: () => void;
@@ -120,6 +123,9 @@ export function PlayerDetailView({
   substitutionTargets,
   readOnly = false,
   backHref = "/my-team/team",
+  ownerTeamName,
+  minutesPlayed = 0,
+  ownGoals = 0,
   onMakeCaptain,
   onMakeViceCaptain,
   onRemove,
@@ -161,6 +167,11 @@ export function PlayerDetailView({
                 <p className="text-sm text-[#081120]/60">
                   {getNationFlag(player.nation)} {player.nation} · {player.position} · {player.club}
                 </p>
+                {ownerTeamName && (
+                  <p className="mt-1 text-xs font-semibold text-[#0066FF]">
+                    Owned by {ownerTeamName}
+                  </p>
+                )}
               </div>
               {isCaptain && (
                 <span className="rounded-full bg-gradient-to-r from-[#FFD700] to-[#B8860B] px-3 py-1 text-xs font-black text-[#081120]">
@@ -194,8 +205,10 @@ export function PlayerDetailView({
               {[
                 { label: "Goals", value: player.goals },
                 { label: "Assists", value: player.assists },
+                { label: "Minutes", value: minutesPlayed },
                 { label: "Yellow Cards", value: player.yellowCards },
                 { label: "Red Cards", value: player.redCards },
+                { label: "Own Goals", value: ownGoals },
                 { label: "MOTM", value: player.motmAwards },
               ].map((stat) => (
                 <div key={stat.label} className="rounded-xl bg-[#081120]/5 py-3 text-center">
