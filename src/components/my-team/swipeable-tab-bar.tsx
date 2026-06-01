@@ -1,20 +1,14 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { MY_TEAM_TABS } from "@/lib/navigation";
 
 interface SwipeableTabBarProps {
   activeTab: string;
-  basePath?: string;
+  onTabChange: (tab: string) => void;
 }
 
-export function SwipeableTabBar({
-  activeTab,
-  basePath = "/my-team",
-}: SwipeableTabBarProps) {
-  const router = useRouter();
-
+export function SwipeableTabBar({ activeTab, onTabChange }: SwipeableTabBarProps) {
   return (
     <div className="w-full overflow-hidden px-3">
       <div
@@ -31,10 +25,10 @@ export function SwipeableTabBar({
               type="button"
               role="tab"
               aria-selected={isActive}
-              onClick={() => router.push(`${basePath}/${tab.slug}`)}
+              onClick={() => onTabChange(tab.slug)}
               className={cn(
                 "min-h-[36px] rounded-lg px-0.5 py-1.5 text-center",
-                "text-[10px] font-bold leading-tight transition-all duration-200",
+                "text-[10px] font-bold leading-tight",
                 "active:scale-[0.97]",
                 isActive
                   ? "bg-[#00C853] text-white shadow-sm"

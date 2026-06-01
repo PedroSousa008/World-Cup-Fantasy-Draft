@@ -1,13 +1,11 @@
 import { prisma } from "@/lib/db/prisma";
-import {
-  buildScoringMap,
-  computePlayerStats,
-  type MatchEventWithMatch,
-} from "@/lib/scoring/compute-player-stats";
-import { syncPowerStatuses } from "@/lib/powers/settle-powers";
-import { computeUserMatchdayPointsWithPowers } from "@/lib/powers/scoring-context";
+import { loadPowerScoringContext } from "@/lib/powers/scoring-context";
 import { MATCHDAY_COUNT, MIN_LEAGUE_TABLE_ROWS } from "@/lib/scoring/constants";
 import type { PlayerRankingRow, RankingsData, TeamRankingRow } from "@/lib/rankings/types";
+import {
+  buildPowerPointsIndex,
+  computeUserMatchdayPointsFromIndex,
+} from "@/lib/rankings/power-points-index";
 
 function buildLeagueTable(
   entries: { userId: string; teamName: string; nation: string; points: number }[],
@@ -42,136 +40,91 @@ function buildLeagueTable(
 }
 
 export async function getRankingsData(currentUserTeamName: string): Promise<RankingsData> {
-  await syncPowerStatuses();
-
   const matchdays = Array.from({ length: MATCHDAY_COUNT }, (_, i) => i + 1);
 
-  const [users, fantasyTeams, players, events, scoringRules, recentMatch] =
+  const [scoringCtx, users, players, recentMatch, allPowers, allRivals] =
     await Promise.all([
+      loadPowerScoringContext(),
       prisma.user.findMany({
         select: { id: true, teamName: true, selectedNation: true },
         orderBy: { teamName: "asc" },
       }),
-      prisma.fantasyTeam.findMany({
-        include: {
-          user: { select: { id: true, teamName: true, selectedNation: true } },
-          players: { select: { playerId: true } },
-        },
-      }),
       prisma.player.findMany({
-        include: {
+        select: {
+          id: true,
+          name: true,
+          nationality: true,
+          position: true,
           fantasySlots: {
-            include: {
+            take: 1,
+            select: {
               fantasyTeam: {
-                include: { user: { select: { teamName: true } } },
+                select: { user: { select: { teamName: true } } },
               },
             },
           },
         },
+        orderBy: { name: "asc" },
       }),
-      prisma.matchEvent.findMany({
-        where: { playerId: { not: null } },
-        include: {
-          match: {
-            include: { homeTeam: true, awayTeam: true },
-          },
-        },
-      }),
-      prisma.scoringRule.findMany({ where: { isActive: true } }),
       prisma.match.findFirst({
         where: { matchday: { not: null } },
         orderBy: { updatedAt: "desc" },
         select: { matchday: true },
       }),
+      prisma.userPower.findMany({
+        where: {
+          matchday: { not: null },
+          status: { in: ["PENDING", "ACTIVE", "USED"] },
+        },
+      }),
+      prisma.rivalChallenge.findMany({
+        where: { status: "USED" },
+      }),
     ]);
 
-  const scoring = buildScoringMap(scoringRules);
-  const eventsByPlayer = new Map<string, MatchEventWithMatch[]>();
-  for (const event of events) {
-    if (!event.playerId) continue;
-    const list = eventsByPlayer.get(event.playerId) ?? [];
-    list.push(event as MatchEventWithMatch);
-    eventsByPlayer.set(event.playerId, list);
-  }
+  const powerIndex = buildPowerPointsIndex(allPowers, allRivals);
 
-  const motmMatches = await prisma.match.findMany({
-    where: { manOfTheMatchId: { not: null } },
-    select: { id: true, matchday: true, manOfTheMatchId: true },
-  });
-
-  const motmByPlayer = new Map<string, { id: string; matchday: number | null }[]>();
-  for (const match of motmMatches) {
-    if (!match.manOfTheMatchId) continue;
-    const list = motmByPlayer.get(match.manOfTheMatchId) ?? [];
-    list.push({ id: match.id, matchday: match.matchday });
-    motmByPlayer.set(match.manOfTheMatchId, list);
-  }
-
-  const playerStatsMap = new Map<
-    string,
-    ReturnType<typeof computePlayerStats>
-  >();
-
-  for (const player of players) {
-    playerStatsMap.set(
-      player.id,
-      computePlayerStats(
-        player,
-        eventsByPlayer.get(player.id) ?? [],
-        motmByPlayer.get(player.id) ?? [],
-        scoring
-      )
-    );
-  }
-
-  const matchdayPointsCache = new Map<string, number>();
-
-  async function userPointsForMatchday(userId: string, matchday?: number): Promise<number> {
-    if (matchday != null) {
-      const key = `${userId}:${matchday}`;
-      if (!matchdayPointsCache.has(key)) {
-        matchdayPointsCache.set(
-          key,
-          await computeUserMatchdayPointsWithPowers(userId, matchday)
-        );
-      }
-      return matchdayPointsCache.get(key) ?? 0;
+  const pointsByUserMatchday = new Map<string, number>();
+  const getPoints = (userId: string, matchday: number) => {
+    const key = `${userId}:${matchday}`;
+    if (!pointsByUserMatchday.has(key)) {
+      pointsByUserMatchday.set(
+        key,
+        computeUserMatchdayPointsFromIndex(userId, matchday, scoringCtx, powerIndex)
+      );
     }
+    return pointsByUserMatchday.get(key) ?? 0;
+  };
 
-    let total = 0;
+  const overallEntries = users.map((user) => {
+    let points = 0;
     for (const md of matchdays) {
-      total += await userPointsForMatchday(userId, md);
+      points += getPoints(user.id, md);
     }
-    return total;
-  }
-
-  const overallEntries = await Promise.all(
-    users.map(async (user) => ({
+    return {
       userId: user.id,
       teamName: user.teamName,
       nation: user.selectedNation,
-      points: await userPointsForMatchday(user.id),
-    }))
-  );
+      points,
+    };
+  });
 
   const overall = buildLeagueTable(overallEntries, MIN_LEAGUE_TABLE_ROWS);
 
   const matchdayRankings: Record<number, TeamRankingRow[]> = {};
   for (const md of matchdays) {
-    const mdEntries = await Promise.all(
-      users.map(async (user) => ({
-        userId: user.id,
-        teamName: user.teamName,
-        nation: user.selectedNation,
-        points: await userPointsForMatchday(user.id, md),
-      }))
-    );
+    const mdEntries = users.map((user) => ({
+      userId: user.id,
+      teamName: user.teamName,
+      nation: user.selectedNation,
+      points: getPoints(user.id, md),
+    }));
     matchdayRankings[md] = buildLeagueTable(mdEntries, MIN_LEAGUE_TABLE_ROWS);
   }
 
   const playerRows: PlayerRankingRow[] = players
     .map((player) => {
-      const stats = playerStatsMap.get(player.id);
+      const stats = scoringCtx.statsMap.get(player.id);
       const ownerTeamName =
         player.fantasySlots[0]?.fantasyTeam.user.teamName ?? null;
 

@@ -16,6 +16,8 @@ import {
 } from "@/lib/actions/powers";
 import type { PowerCardData, PowersPageData } from "@/lib/powers/types";
 import type { PowerType } from "@prisma/client";
+import { useRankingsRefreshOptional } from "@/contexts/rankings-data-context";
+import { invalidateRankingsCache } from "@/lib/rankings/rankings-cache";
 import { cn } from "@/lib/utils";
 
 interface PowerActivateSheetProps {
@@ -32,6 +34,7 @@ export function PowerActivateSheet({
   onClose,
 }: PowerActivateSheetProps) {
   const router = useRouter();
+  const refreshRankings = useRankingsRefreshOptional();
   const scrollRef = useRef<HTMLDivElement>(null);
   const [mounted, setMounted] = useState(false);
   const [pending, startTransition] = useTransition();
@@ -80,6 +83,8 @@ export function PowerActivateSheet({
           return;
         }
         handleClose();
+        invalidateRankingsCache();
+        void refreshRankings?.();
         router.refresh();
       })();
     });
