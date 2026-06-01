@@ -61,7 +61,7 @@ export function DraftFilters({ filters, onChange }: DraftFiltersProps) {
   return (
     <div className="space-y-3">
       {/* Position */}
-      <div className="flex gap-1.5 overflow-x-auto pb-0.5 scrollbar-none">
+      <div className="flex flex-wrap gap-1.5 pb-0.5">
         <FilterPill active={filters.position === null} onClick={() => setPosition(null)} label="All" />
         {DRAFT_POSITIONS.map((pos) => (
           <FilterPill

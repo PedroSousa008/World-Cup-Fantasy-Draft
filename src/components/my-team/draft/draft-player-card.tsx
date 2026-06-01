@@ -4,6 +4,13 @@ import { cn } from "@/lib/utils";
 import { getDraftNationFlag } from "@/lib/draft/nations";
 import type { DraftPlayerCard } from "@/lib/draft/types";
 
+const POSITION_LABEL: Record<string, string> = {
+  GK: "Goalkeeper",
+  DEF: "Defender",
+  MID: "Midfielder",
+  FWD: "Attacker",
+};
+
 interface DraftPlayerCardTileProps {
   player: DraftPlayerCard;
   isSaved: boolean;
@@ -71,7 +78,8 @@ export function DraftPlayerCardTile({
       )}
 
       <p className="mt-0.5 truncate text-center text-[8px] text-[#081120]/50">
-        {player.position} · {getDraftNationFlag(player.nation)}
+        {POSITION_LABEL[player.position] ?? player.position} ·{" "}
+        {getDraftNationFlag(player.nation)}
       </p>
 
       <p className="mt-1 text-center text-[10px] font-black tabular-nums text-[#0066FF]">
