@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/db/prisma";
 import { WORLD_CUP_NATION_BY_NAME } from "@/lib/nations/world-cup-nations";
-import { ensureNationSchema, prepareOwnerPlayersDatabase } from "@/lib/db/ensure-nation-schema";
+import { ensureNationSchema } from "@/lib/db/ensure-nation-schema";
 
 export interface NationListItem {
   id: string;

@@ -10,11 +10,33 @@ public/players/
   ...
 ```
 
-## Upload rules
+## How to add a player
 
-1. Upload player photos into the nation folder (e.g. `public/players/portugal/`).
-2. Use the **Owner dashboard** to create the player and assign the image, or upload via the nation page after creating the player.
-3. The database stores a public path like `/players/portugal/{player-id}.jpg`.
-4. That image appears automatically on draft cards, rankings, and team views.
+1. Save the image in the correct nation folder, e.g. `public/players/portugal/diogocosta.png`
+2. Register the player (nation is detected from the folder):
+
+```bash
+npm run player:add -- portugal diogocosta.png "Diogo Costa" Goalkeeper
+```
+
+3. The player appears in **Draft → Initial Draft** and **Redraft** until assigned to a user.
+
+### Optional: batch via meta files
+
+Create `diogocosta.meta.json` next to the image:
+
+```json
+{ "name": "Diogo Costa", "position": "Goalkeeper" }
+```
+
+Then run:
+
+```bash
+npm run players:sync
+```
+
+### Owner role
+
+The Owner UI is for **assigning** players to user teams, not manual form entry.
 
 Do not add placeholder or fake player images to the repo.

@@ -14,7 +14,9 @@
     "db:studio": "prisma studio",
     "db:seed": "prisma db seed",
     "nations:folders": "node scripts/ensure-nation-folders.mjs",
-    "nations:setup": "npm run nations:folders && npm run db:push && npm run db:seed"
+    "nations:setup": "npm run nations:folders && npm run db:push && npm run db:seed",
+    "player:add": "tsx scripts/register-player.ts",
+    "players:sync": "tsx scripts/sync-players-from-folders.ts"
   },
   "prisma": {
     "seed": "npx tsx prisma/seed.ts"

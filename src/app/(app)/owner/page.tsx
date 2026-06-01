@@ -10,7 +10,7 @@ const OWNER_SECTIONS = [
   {
     icon: Users,
     title: "Players & Teams",
-    description: "Manage nations, upload player images, create players, assign squads.",
+    description: "Assign players to teams. Register players via nation folders + npm run player:add.",
     color: "text-[#0066FF]",
     bg: "bg-[#0066FF]/10",
     href: "/owner/players",
@@ -95,7 +95,7 @@ export default async function OwnerDashboardPage() {
 
       <EmptyState
         title="Add players nation by nation"
-        description="Run npm run nations:setup once, then open Players & Teams to create real players with locked positions and photos in each nation folder."
+        description="Add images to public/players/{nation}/, then run npm run player:add. Open a nation here to assign players to users."
         accent="blue"
       />
     </div>

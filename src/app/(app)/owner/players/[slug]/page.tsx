@@ -1,9 +1,8 @@
 import Link from "next/link";
-import { notFound, redirect } from "next/navigation";
+import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { UserRole } from "@prisma/client";
-import { CreatePlayerForm } from "@/components/owner/create-player-form";
-import { NationPlayersList } from "@/components/owner/nation-players-list";
+import { OwnerNationAssignments } from "@/components/owner/owner-nation-assignments";
 import { getNationDetailData } from "@/lib/owner/get-nations-data";
 import { getNationFlag } from "@/lib/nations";
 import { ArrowLeft } from "lucide-react";
@@ -35,9 +34,6 @@ export default async function OwnerNationPage({ params }: PageProps) {
         </Link>
         <div className="rounded-2xl bg-white/95 p-6 text-center shadow-lg ring-1 ring-black/5">
           <p className="font-bold text-[#081120]">Nation not found</p>
-          <p className="mt-2 text-sm text-[#081120]/50">
-            Go back and tap &quot;Add nations&quot; if you have not set up nations yet.
-          </p>
           <Link
             href="/owner/players"
             className="mt-4 inline-block text-sm font-semibold text-[#0066FF]"
@@ -73,18 +69,12 @@ export default async function OwnerNationPage({ params }: PageProps) {
         </div>
       </div>
 
-      <CreatePlayerForm nationSlug={nation.slug} nationName={nation.name} />
-
-      {data.players.length === 0 ? (
-        <div className="rounded-2xl bg-white/95 p-6 text-center shadow-lg ring-1 ring-black/5">
-          <p className="font-semibold text-[#081120]/70">No players added yet.</p>
-          <p className="mt-1 text-sm text-[#081120]/45">
-            Use the form above to add the first player for {nation.name}.
-          </p>
-        </div>
-      ) : (
-        <NationPlayersList players={data.players} users={data.users} />
-      )}
+      <OwnerNationAssignments
+        nationSlug={nation.slug}
+        nationName={nation.name}
+        players={data.players}
+        users={data.users}
+      />
     </div>
   );
 }

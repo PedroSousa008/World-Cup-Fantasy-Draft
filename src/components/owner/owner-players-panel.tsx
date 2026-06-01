@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { NationsGrid } from "@/components/owner/nations-grid";
+import { FileBasedPlayerGuide } from "@/components/owner/file-based-player-guide";
 import { Button } from "@/components/ui/button";
 import {
   setupOwnerPlayersDatabaseAction,
@@ -67,7 +68,8 @@ export function OwnerPlayersPanel({ nations, error, needsSetup }: OwnerPlayersPa
       <div className="space-y-4 rounded-2xl bg-white/95 p-6 text-center shadow-lg ring-1 ring-black/5">
         <h3 className="font-bold text-[#081120]">No nations added yet</h3>
         <p className="text-sm text-[#081120]/60">
-          Sync the 48 participating World Cup nations to start adding players and images.
+          Sync nations, then add player images to each nation folder and register with{" "}
+          <code className="rounded bg-[#081120]/5 px-1">npm run player:add</code>.
         </p>
         {message && (
           <p className="rounded-lg bg-[#00C853]/10 px-3 py-2 text-sm text-[#00A844]">{message}</p>
@@ -96,6 +98,8 @@ export function OwnerPlayersPanel({ nations, error, needsSetup }: OwnerPlayersPa
 
   return (
     <div className="space-y-4">
+      <FileBasedPlayerGuide />
+
       {localError && (
         <p className="rounded-xl bg-[#E53935]/10 px-4 py-3 text-sm text-[#E53935]">{localError}</p>
       )}
