@@ -18,8 +18,8 @@ export default async function ProfilePage() {
         <div className="pointer-events-none absolute -bottom-6 -left-6 h-32 w-32 rounded-full bg-[#00C853]/8 blur-2xl" />
         <div className="relative flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-4">
-            <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-2xl bg-white shadow-lg">
-              {branding.appLogoUrl || branding.appIconUrl ? (
+            <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-2xl bg-white shadow-lg p-1">
+              {branding.logoSrc ? (
                 <AppLogoStatic branding={branding} showName={false} size="lg" variant="logo" />
               ) : (
                 <User className="h-8 w-8 text-[#0066FF]" />

@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { BallMark } from "@/components/design/ball-mark";
 import { useBranding } from "@/contexts/branding-context";
@@ -9,7 +10,6 @@ interface AppLogoProps {
   size?: "sm" | "md" | "lg" | "xl";
   className?: string;
   nameClassName?: string;
-  /** Use icon asset when true, otherwise full logo */
   variant?: "logo" | "icon";
 }
 
@@ -20,6 +20,35 @@ const markSizes = {
   xl: "h-20 w-20",
 };
 
+function LogoImage({
+  src,
+  alt,
+  size,
+  onError,
+}: {
+  src: string;
+  alt: string;
+  size: keyof typeof markSizes;
+  onError?: () => void;
+}) {
+  return (
+    <div
+      className={cn(
+        "relative shrink-0 overflow-hidden rounded-xl bg-white/5",
+        markSizes[size]
+      )}
+    >
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={src}
+        alt={alt}
+        className="h-full w-full object-contain"
+        onError={onError}
+      />
+    </div>
+  );
+}
+
 export function AppLogo({
   showName = true,
   size = "md",
@@ -28,29 +57,26 @@ export function AppLogo({
   variant = "logo",
 }: AppLogoProps) {
   const branding = useBranding();
-  const imageUrl =
+  const [imgFailed, setImgFailed] = useState(false);
+
+  const src =
     variant === "icon"
-      ? branding.appIconUrl ?? branding.appLogoUrl
-      : branding.appLogoUrl ?? branding.appIconUrl;
+      ? branding.iconSrc ?? branding.logoSrc
+      : branding.logoSrc ?? branding.iconSrc;
+
+  const showPlaceholder = !src || imgFailed;
 
   return (
     <div className={cn("flex min-w-0 items-center gap-2.5", className)}>
-      {imageUrl ? (
-        <div
-          className={cn(
-            "relative shrink-0 overflow-hidden rounded-xl bg-white/5",
-            markSizes[size]
-          )}
-        >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={imageUrl}
-            alt={branding.appName}
-            className="h-full w-full object-contain"
-          />
-        </div>
-      ) : (
+      {showPlaceholder ? (
         <BallMark size={size === "xl" ? "lg" : size === "lg" ? "lg" : size} />
+      ) : (
+        <LogoImage
+          src={src}
+          alt={branding.appName}
+          size={size}
+          onError={() => setImgFailed(true)}
+        />
       )}
       {showName && (
         <span
@@ -66,7 +92,6 @@ export function AppLogo({
   );
 }
 
-/** Server-safe logo for pages without client provider */
 export function AppLogoStatic({
   branding,
   showName = true,
@@ -74,28 +99,16 @@ export function AppLogoStatic({
   className,
   nameClassName,
   variant = "logo",
-}: AppLogoProps & { branding: { appName: string; appShortName: string; appLogoUrl: string | null; appIconUrl: string | null } }) {
-  const imageUrl =
+}: AppLogoProps & { branding: { appName: string; appShortName: string; logoSrc: string | null; iconSrc: string | null } }) {
+  const src =
     variant === "icon"
-      ? branding.appIconUrl ?? branding.appLogoUrl
-      : branding.appLogoUrl ?? branding.appIconUrl;
+      ? branding.iconSrc ?? branding.logoSrc
+      : branding.logoSrc ?? branding.iconSrc;
 
   return (
     <div className={cn("flex min-w-0 items-center gap-2.5", className)}>
-      {imageUrl ? (
-        <div
-          className={cn(
-            "relative shrink-0 overflow-hidden rounded-xl bg-white/5",
-            markSizes[size]
-          )}
-        >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={imageUrl}
-            alt={branding.appName}
-            className="h-full w-full object-contain"
-          />
-        </div>
+      {src ? (
+        <LogoImage src={src} alt={branding.appName} size={size} />
       ) : (
         <BallMark size={size === "xl" ? "lg" : size === "lg" ? "lg" : size} />
       )}

@@ -1,13 +1,8 @@
 export interface AppBranding {
   appName: string;
   appShortName: string;
-  appLogoUrl: string | null;
-  appIconUrl: string | null;
+  /** null = no logo.png in public/ — show placeholder */
+  logoSrc: string | null;
+  /** null = no icon.png or logo.png — use default favicon */
+  iconSrc: string | null;
 }
-
-export const DEFAULT_BRANDING: AppBranding = {
-  appName: "World Cup Fantasy Draft",
-  appShortName: "WC Fantasy",
-  appLogoUrl: null,
-  appIconUrl: null,
-};

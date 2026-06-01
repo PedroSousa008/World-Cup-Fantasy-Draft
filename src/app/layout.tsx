@@ -20,10 +20,9 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     title: branding.appName,
     description: "Private World Cup fantasy competition for friends",
-    icons: {
-      icon: "/api/branding/icon",
-      apple: "/api/branding/icon",
-    },
+    icons: branding.iconSrc
+      ? { icon: branding.iconSrc, apple: branding.iconSrc }
+      : { icon: "/favicon.svg" },
     appleWebApp: {
       title: branding.appShortName,
     },
