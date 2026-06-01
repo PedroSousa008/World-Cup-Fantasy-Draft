@@ -1,30 +1,7 @@
-export const NATION_FLAGS: Record<string, string> = {
-  Argentina: "🇦🇷",
-  Australia: "🇦🇺",
-  Belgium: "🇧🇪",
-  Brazil: "🇧🇷",
-  Canada: "🇨🇦",
-  Colombia: "🇨🇴",
-  Croatia: "🇭🇷",
-  England: "🏴󠁧󠁢󠁥󠁮󠁧󠁿",
-  France: "🇫🇷",
-  Germany: "🇩🇪",
-  Italy: "🇮🇹",
-  Japan: "🇯🇵",
-  Mexico: "🇲🇽",
-  Morocco: "🇲🇦",
-  Netherlands: "🇳🇱",
-  Portugal: "🇵🇹",
-  Spain: "🇪🇸",
-  USA: "🇺🇸",
-  Uruguay: "🇺🇾",
-};
+import type { PlayerPosition } from "@/lib/players/types";
 
-export function getNationFlag(nation: string): string {
-  return NATION_FLAGS[nation] ?? "🏳️";
-}
-
-export type PlayerPosition = "GK" | "DEF" | "MID" | "FWD";
+export { getNationFlag, WORLD_CUP_NATION_FLAGS as NATION_FLAGS } from "@/lib/nations";
+export type { PlayerPosition } from "@/lib/players/types";
 export type MatchStatus = "live" | "finished" | "not_started" | "eliminated" | "injured";
 
 export interface SquadPlayer {

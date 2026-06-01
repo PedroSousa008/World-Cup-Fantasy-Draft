@@ -5,7 +5,7 @@ import { ChevronDown, Search, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { DRAFT_NATIONS, DRAFT_POSITIONS } from "@/lib/draft/nations";
 import type { DraftFilterState } from "@/lib/draft/types";
-import type { PlayerPosition } from "@/lib/mock/my-team-data";
+import type { PlayerPosition } from "@/lib/players/types";
 
 interface DraftFiltersProps {
   filters: DraftFilterState;

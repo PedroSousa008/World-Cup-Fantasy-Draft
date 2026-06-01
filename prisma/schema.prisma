@@ -193,14 +193,18 @@ model VerificationToken {
 // ─── Tournament Data (Owner-managed) ─────────────────────────────────────────
 
 model NationalTeam {
-  id        String     @id @default(cuid())
-  name      String     @unique
-  code      String     @unique
-  flagUrl   String?
-  groupName String?
-  status    TeamStatus @default(ACTIVE)
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
+  id         String     @id @default(cuid())
+  name       String     @unique
+  slug       String     @unique
+  code       String     @unique
+  flagEmoji  String?
+  flagUrl    String?
+  imageDir   String
+  isActive   Boolean    @default(true)
+  groupName  String?
+  status     TeamStatus @default(ACTIVE)
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
 
   players       Player[]
   homeMatches   Match[]  @relation("HomeTeam")
@@ -208,22 +212,26 @@ model NationalTeam {
 }
 
 model Player {
-  id             String             @id @default(cuid())
-  name           String
-  photoUrl       String?
-  position       PlayerPosition
-  nationality    String
-  club           String?
-  availability   PlayerAvailability @default(AVAILABLE)
-  teamStatus     TeamStatus         @default(ACTIVE)
-  nationalTeamId String?
-  nationalTeam   NationalTeam?      @relation(fields: [nationalTeamId], references: [id])
-  createdAt      DateTime           @default(now())
-  updatedAt      DateTime           @updatedAt
+  id               String             @id @default(cuid())
+  name             String
+  photoUrl         String?
+  position         PlayerPosition
+  positionLocked   Boolean            @default(true)
+  nationality      String
+  club             String?
+  availability     PlayerAvailability @default(AVAILABLE)
+  teamStatus       TeamStatus         @default(ACTIVE)
+  nationalTeamId   String?
+  nationalTeam     NationalTeam?      @relation(fields: [nationalTeamId], references: [id])
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
 
   fantasySlots FantasyTeamPlayer[]
   matchEvents  MatchEvent[]
   savedBy      SavedPlayer[]
+
+  @@index([nationalTeamId])
+  @@index([position])
 }
 
 model Match {

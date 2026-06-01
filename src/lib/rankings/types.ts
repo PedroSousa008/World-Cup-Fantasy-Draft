@@ -12,7 +12,9 @@ export interface PlayerRankingRow {
   playerId: string;
   name: string;
   nation: string;
+  nationFlag: string;
   position: string;
+  photoUrl: string | null;
   ownerTeamName: string | null;
   totalPoints: number;
 }

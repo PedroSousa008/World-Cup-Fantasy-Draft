@@ -1,7 +1,8 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import { getNationFlag } from "@/lib/mock/my-team-data";
+import { PlayerAvatar } from "@/components/player/player-avatar";
+import { getNationFlag } from "@/lib/nations";
 import { getNationTheme, parseFixture } from "@/lib/nation-theme";
 import type { MatchStatus } from "@/lib/mock/my-team-data";
 
@@ -27,30 +28,46 @@ interface FantasyPlayerCardProps {
   className?: string;
 }
 
-function PlayerPhoto({ name, size }: { name: string; size: "pitch" | "bench" | "list" | "full" }) {
-  const initials = name
-    .split(" ")
-    .map((n) => n[0])
-    .join("")
-    .slice(0, 2)
-    .toUpperCase();
-
+function PlayerPhoto({
+  name,
+  photoUrl,
+  size,
+}: {
+  name: string;
+  photoUrl?: string;
+  size: "pitch" | "bench" | "list" | "full";
+}) {
   const sizeMap = {
-    pitch: "h-10 w-10 text-[10px]",
-    bench: "h-12 w-12 text-xs",
-    list: "h-14 w-14 text-sm",
-    full: "h-28 w-28 text-3xl",
+    pitch: "h-10 w-10",
+    bench: "h-12 w-12",
+    list: "h-14 w-14",
+    full: "h-28 w-28",
+  };
+
+  const initialsMap = {
+    pitch: "text-[10px]",
+    bench: "text-xs",
+    list: "text-sm",
+    full: "text-3xl",
   };
 
   return (
     <div
       className={cn(
-        "relative flex items-center justify-center rounded-full font-black text-white",
-        "bg-gradient-to-br from-white/30 to-white/5 shadow-inner ring-2 ring-[#FFD700]/40",
+        "relative overflow-hidden rounded-full shadow-inner ring-2 ring-[#FFD700]/40",
         sizeMap[size]
       )}
     >
-      {initials}
+      <PlayerAvatar
+        name={name}
+        photoUrl={photoUrl}
+        className={cn("h-full w-full rounded-full", sizeMap[size])}
+        initialsClassName={cn(
+          "h-full w-full rounded-full font-black text-white",
+          "bg-gradient-to-br from-white/30 to-white/5",
+          initialsMap[size]
+        )}
+      />
     </div>
   );
 }
@@ -162,7 +179,7 @@ export function FantasyPlayerCard({
             )}
 
             <div className="relative">
-              <PlayerPhoto name={player.name} size={size} />
+              <PlayerPhoto name={player.name} photoUrl={player.photoUrl} size={size} />
               {isCaptain && (
                 <span className="absolute -right-1 -top-1">
                   <CaptainBadge type="C" size={size} />

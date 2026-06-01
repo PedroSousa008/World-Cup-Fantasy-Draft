@@ -1,5 +1,7 @@
 import { prisma } from "@/lib/db/prisma";
 import { loadPowerScoringContext } from "@/lib/powers/scoring-context";
+import { getNationFlag } from "@/lib/nations";
+import { getPositionLabel } from "@/lib/players/types";
 import { MATCHDAY_COUNT, MIN_LEAGUE_TABLE_ROWS } from "@/lib/scoring/constants";
 import type { PlayerRankingRow, RankingsData, TeamRankingRow } from "@/lib/rankings/types";
 import {
@@ -53,8 +55,10 @@ export async function getRankingsData(currentUserTeamName: string): Promise<Rank
         select: {
           id: true,
           name: true,
+          photoUrl: true,
           nationality: true,
           position: true,
+          nationalTeam: { select: { name: true, flagEmoji: true } },
           fantasySlots: {
             take: 1,
             select: {
@@ -127,12 +131,15 @@ export async function getRankingsData(currentUserTeamName: string): Promise<Rank
       const stats = scoringCtx.statsMap.get(player.id);
       const ownerTeamName =
         player.fantasySlots[0]?.fantasyTeam.user.teamName ?? null;
+      const nationName = player.nationalTeam?.name ?? player.nationality;
 
       return {
         playerId: player.id,
         name: player.name,
-        nation: player.nationality,
-        position: player.position,
+        nation: nationName,
+        nationFlag: player.nationalTeam?.flagEmoji ?? getNationFlag(nationName),
+        position: getPositionLabel(player.position),
+        photoUrl: player.photoUrl,
         ownerTeamName,
         totalPoints: stats?.totalPoints ?? 0,
       };

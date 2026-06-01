@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db/prisma";
 import type { DraftData, DraftPlayerCard } from "@/lib/draft/types";
-import type { PlayerPosition } from "@/lib/mock/my-team-data";
+import { getNationFlag } from "@/lib/nations";
+import type { PlayerPosition } from "@/lib/players/types";
 import { loadAllPlayerStats } from "@/lib/scoring/load-all-player-stats";
 
 export async function getDraftData(userId: string): Promise<DraftData> {
@@ -8,6 +9,9 @@ export async function getDraftData(userId: string): Promise<DraftData> {
     prisma.player.findMany({
       orderBy: [{ nationality: "asc" }, { name: "asc" }],
       include: {
+        nationalTeam: {
+          select: { slug: true, flagEmoji: true, name: true },
+        },
         fantasySlots: {
           take: 1,
           include: {
@@ -31,12 +35,16 @@ export async function getDraftData(userId: string): Promise<DraftData> {
     const owner = player.fantasySlots[0]?.fantasyTeam.user ?? null;
     const stats = statsMap.get(player.id);
 
+    const nationName = player.nationalTeam?.name ?? player.nationality;
+
     return {
       id: player.id,
       name: player.name,
       photoUrl: player.photoUrl,
       position: player.position as PlayerPosition,
-      nation: player.nationality,
+      nation: nationName,
+      nationSlug: player.nationalTeam?.slug ?? null,
+      nationFlag: player.nationalTeam?.flagEmoji ?? getNationFlag(nationName),
       totalPoints: stats?.totalPoints ?? 0,
       ownerTeamName: owner?.teamName ?? null,
       ownerSelectedNation: owner?.selectedNation ?? null,

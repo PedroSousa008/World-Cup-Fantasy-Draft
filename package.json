@@ -11,7 +11,13 @@
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
     "db:migrate": "prisma migrate dev",
-    "db:studio": "prisma studio"
+    "db:studio": "prisma studio",
+    "db:seed": "prisma db seed",
+    "nations:folders": "node scripts/ensure-nation-folders.mjs",
+    "nations:setup": "npm run nations:folders && npm run db:push && npm run db:seed"
+  },
+  "prisma": {
+    "seed": "npx tsx prisma/seed.ts"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.9.1",
@@ -39,6 +45,7 @@
     "eslint-config-next": "^15.3.3",
     "prisma": "^6.9.0",
     "tailwindcss": "^4.1.8",
+    "tsx": "^4.22.4",
     "typescript": "^5.8.3"
   }
 }

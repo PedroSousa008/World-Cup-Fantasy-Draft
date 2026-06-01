@@ -1,4 +1,4 @@
-import type { PlayerPosition } from "@/lib/mock/my-team-data";
+import type { PlayerPosition } from "@/lib/players/types";
 
 export interface DraftPlayerCard {
   id: string;
@@ -6,6 +6,8 @@ export interface DraftPlayerCard {
   photoUrl: string | null;
   position: PlayerPosition;
   nation: string;
+  nationSlug: string | null;
+  nationFlag: string;
   totalPoints: number;
   ownerTeamName: string | null;
   ownerSelectedNation: string | null;

@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { UserRole } from "@prisma/client";
@@ -9,9 +10,11 @@ const OWNER_SECTIONS = [
   {
     icon: Users,
     title: "Players & Teams",
-    description: "Manage player cards, national teams, and assignments.",
+    description: "Manage nations, upload player images, create players, assign squads.",
     color: "text-[#0066FF]",
     bg: "bg-[#0066FF]/10",
+    href: "/owner/players",
+    available: true,
   },
   {
     icon: Calendar,
@@ -19,6 +22,8 @@ const OWNER_SECTIONS = [
     description: "Create matches, enter results, and schedule events.",
     color: "text-[#00C853]",
     bg: "bg-[#00C853]/10",
+    href: null,
+    available: false,
   },
   {
     icon: Settings,
@@ -26,6 +31,8 @@ const OWNER_SECTIONS = [
     description: "Customize point values for goals, assists, cards, and more.",
     color: "text-[#0066FF]",
     bg: "bg-[#0066FF]/10",
+    href: null,
+    available: false,
   },
   {
     icon: Trophy,
@@ -33,6 +40,8 @@ const OWNER_SECTIONS = [
     description: "Enable betting, create promoted bets, assign rewards.",
     color: "text-[#E53935]",
     bg: "bg-[#E53935]/10",
+    href: null,
+    available: false,
   },
 ];
 
@@ -58,19 +67,35 @@ export default async function OwnerDashboardPage() {
       <div className="grid gap-4 sm:grid-cols-2">
         {OWNER_SECTIONS.map((section) => (
           <Card key={section.title} title={section.title} description={section.description}>
-            <div className="flex items-center gap-3 text-sm text-[#081120]/45">
-              <span className={`flex h-9 w-9 items-center justify-center rounded-xl ${section.bg}`}>
-                <section.icon className={`h-4 w-4 ${section.color}`} />
-              </span>
-              <span>Available in Phase 2</span>
-            </div>
+            {section.available && section.href ? (
+              <Link
+                href={section.href}
+                className="flex items-center gap-3 text-sm font-semibold text-[#0066FF]"
+              >
+                <span
+                  className={`flex h-9 w-9 items-center justify-center rounded-xl ${section.bg}`}
+                >
+                  <section.icon className={`h-4 w-4 ${section.color}`} />
+                </span>
+                Open →
+              </Link>
+            ) : (
+              <div className="flex items-center gap-3 text-sm text-[#081120]/45">
+                <span
+                  className={`flex h-9 w-9 items-center justify-center rounded-xl ${section.bg}`}
+                >
+                  <section.icon className={`h-4 w-4 ${section.color}`} />
+                </span>
+                <span>Coming soon</span>
+              </div>
+            )}
           </Card>
         ))}
       </div>
 
       <EmptyState
-        title="Owner tools coming in Phase 2"
-        description="Player management, match data entry, scoring configuration, and betting controls will be built on this foundation."
+        title="Add players nation by nation"
+        description="Run npm run nations:setup once, then open Players & Teams to create real players with locked positions and photos in each nation folder."
         accent="blue"
       />
     </div>

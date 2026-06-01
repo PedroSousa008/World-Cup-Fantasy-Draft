@@ -1,7 +1,7 @@
 "use client";
 
+import { PlayerAvatar } from "@/components/player/player-avatar";
 import { cn } from "@/lib/utils";
-import { getNationFlag } from "@/lib/mock/my-team-data";
 import type { PlayerRankingRow } from "@/lib/rankings/types";
 
 interface PlayerRankingCardProps {
@@ -16,6 +16,15 @@ export function PlayerRankingCard({ row, onClick }: PlayerRankingCardProps) {
       onClick={onClick}
       className="flex w-full items-center gap-3 rounded-2xl bg-white/95 p-4 text-left shadow-lg ring-1 ring-black/5 transition-all active:scale-[0.99]"
     >
+      <div className="h-10 w-10 shrink-0 overflow-hidden rounded-full">
+        <PlayerAvatar
+          name={row.name}
+          photoUrl={row.photoUrl}
+          className="h-10 w-10"
+          initialsClassName="h-10 w-10 text-[10px]"
+        />
+      </div>
+
       <span
         className={cn(
           "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-sm font-bold",
@@ -32,7 +41,7 @@ export function PlayerRankingCard({ row, onClick }: PlayerRankingCardProps) {
       <div className="min-w-0 flex-1">
         <p className="truncate font-bold text-[#081120]">
           {row.name}{" "}
-          <span className="text-sm">{getNationFlag(row.nation)}</span>
+          <span className="text-sm">{row.nationFlag}</span>
         </p>
         <p className="truncate text-xs text-[#081120]/50">
           {row.position}
