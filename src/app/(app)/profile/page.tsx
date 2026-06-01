@@ -1,23 +1,29 @@
 import { auth } from "@/lib/auth";
+import { getBranding } from "@/lib/branding/get-branding";
 import { Card, EmptyState } from "@/components/ui/card";
 import { PageHeader } from "@/components/layout/section-page";
+import { AppLogoStatic } from "@/components/branding/app-logo";
 import { UserRole } from "@prisma/client";
 import { Trophy, Target, TrendingUp, User } from "lucide-react";
 
 export default async function ProfilePage() {
   const session = await auth();
   const user = session!.user;
+  const branding = await getBranding();
 
   return (
-    <div className="space-y-6">
-      {/* Profile hero with ball-inspired header pattern */}
+    <div className="space-y-6 overflow-x-hidden">
       <div className="relative overflow-hidden rounded-2xl border border-white/8 bg-white/[0.03] p-6 backdrop-blur-sm sm:p-8">
         <div className="pointer-events-none absolute -right-8 -top-8 h-40 w-40 rounded-full bg-[#0066FF]/10 blur-2xl" />
         <div className="pointer-events-none absolute -bottom-6 -left-6 h-32 w-32 rounded-full bg-[#00C853]/8 blur-2xl" />
         <div className="relative flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-4">
-            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-white shadow-lg">
-              <User className="h-8 w-8 text-[#0066FF]" />
+            <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-2xl bg-white shadow-lg">
+              {branding.appLogoUrl || branding.appIconUrl ? (
+                <AppLogoStatic branding={branding} showName={false} size="lg" variant="logo" />
+              ) : (
+                <User className="h-8 w-8 text-[#0066FF]" />
+              )}
             </div>
             <div>
               <h1 className="text-display text-2xl">{user.teamName}</h1>
@@ -61,6 +67,10 @@ export default async function ProfilePage() {
             <div>
               <dt className="text-[#081120]/50">Selected Nation</dt>
               <dd className="font-semibold text-[#081120]">{user.selectedNation}</dd>
+            </div>
+            <div>
+              <dt className="text-[#081120]/50">League</dt>
+              <dd className="font-semibold text-[#081120]">{branding.appName}</dd>
             </div>
           </dl>
         </Card>

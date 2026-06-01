@@ -123,7 +123,7 @@ export function RankingsView() {
       )}
 
       {tab === "players" && (
-        <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-none snap-x snap-mandatory">
+        <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-none scroll-contain-x snap-x snap-mandatory">
           {MOCK_PLAYER_RANKINGS.map((item) => {
             const player = getShowcasePlayer(item.player);
             return (

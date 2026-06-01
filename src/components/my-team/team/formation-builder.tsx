@@ -45,7 +45,7 @@ export function FormationBuilder({ teamName, selectedNation }: FormationBuilderP
   };
 
   return (
-    <div className="space-y-4 pb-6">
+    <div className="space-y-4 pb-6 overflow-x-hidden">
       <TeamSummaryCard
         teamName={teamName}
         nation={selectedNation}

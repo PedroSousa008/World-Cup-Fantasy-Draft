@@ -46,7 +46,7 @@ export function BenchPanel({
         <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-white/40">
           Bench · tap player to substitute
         </p>
-        <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-none snap-x snap-mandatory">
+        <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-none scroll-contain-x snap-x snap-mandatory">
           {benchSlots.map((slot) => {
             const player = getPlayer(slot.id);
             return (

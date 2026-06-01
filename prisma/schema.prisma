@@ -93,6 +93,10 @@ model PlatformSettings {
   ownerId        String?  @unique
   owner          User?    @relation("PlatformOwner", fields: [ownerId], references: [id])
   bettingEnabled Boolean  @default(false)
+  appLogoUrl     String?  @db.Text
+  appIconUrl     String?  @db.Text
+  appName        String?  @default("World Cup Fantasy Draft")
+  appShortName   String?  @default("WC Fantasy")
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 }

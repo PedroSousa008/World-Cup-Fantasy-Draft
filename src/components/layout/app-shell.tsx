@@ -6,7 +6,7 @@ import { signOut } from "next-auth/react";
 import { LogOut, Shield } from "lucide-react";
 import { SidebarNav, BottomNav } from "@/components/layout/navigation";
 import { Button } from "@/components/ui/button";
-import { BrandLogo } from "@/components/design/ball-mark";
+import { AppLogo } from "@/components/branding/app-logo";
 import { WorldCupBackground } from "@/components/design/world-cup-background";
 import { getScreenTheme } from "@/lib/design/theme";
 import { UserRole } from "@prisma/client";
@@ -30,7 +30,7 @@ export function AppShell({ children, user }: AppShellProps) {
   const isPlayerPage = pathname.includes("/my-team/player/");
 
   return (
-    <div className="relative min-h-screen text-white">
+    <div className="relative min-h-screen overflow-x-hidden text-white" data-app-root>
       <WorldCupBackground theme={theme} />
 
       <header className="wc-glass sticky top-0 z-40 border-b">
@@ -39,8 +39,8 @@ export function AppShell({ children, user }: AppShellProps) {
             isMyTeam ? "max-w-lg" : "max-w-7xl"
           }`}
         >
-          <Link href="/my-team">
-            <BrandLogo showName={!isMyTeam} />
+          <Link href="/my-team" className="min-w-0 shrink">
+            <AppLogo showName={!isMyTeam} />
           </Link>
 
           <div className="flex items-center gap-2">
@@ -82,7 +82,7 @@ export function AppShell({ children, user }: AppShellProps) {
           </aside>
         )}
         <main
-          className={`wc-stagger min-w-0 flex-1 ${
+          className={`wc-stagger min-w-0 flex-1 overflow-x-hidden ${
             isMyTeam ? "pb-24" : "pb-24 md:pb-8"
           }`}
         >

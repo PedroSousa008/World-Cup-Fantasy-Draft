@@ -3,7 +3,10 @@ import { auth } from "@/lib/auth";
 import { UserRole } from "@prisma/client";
 import { Card, EmptyState } from "@/components/ui/card";
 import { PageHeader } from "@/components/layout/section-page";
-import { Shield, Users, Calendar, Settings, Trophy } from "lucide-react";
+import { AppBrandingForm } from "@/components/owner/app-branding-form";
+import { getBranding } from "@/lib/branding/get-branding";
+import { AppLogoStatic } from "@/components/branding/app-logo";
+import { Shield, Users, Calendar, Settings, Trophy, Palette } from "lucide-react";
 
 const OWNER_SECTIONS = [
   {
@@ -43,17 +46,31 @@ export default async function OwnerDashboardPage() {
     redirect("/my-team");
   }
 
+  const branding = await getBranding();
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 overflow-x-hidden">
       <div className="flex items-center gap-4">
+        <AppLogoStatic branding={branding} showName={false} size="lg" />
         <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#0066FF]/15 shadow-[inset_0_0_0_1px_rgba(0,102,255,0.2)]">
           <Shield className="h-6 w-6 text-[#0066FF]" />
         </div>
         <PageHeader
           title="Owner Dashboard"
-          description="Manage tournament data, scoring, betting, and league events."
+          description="Manage tournament data, scoring, betting, and league branding."
         />
       </div>
+
+      <Card
+        title="App Branding"
+        description="Upload your app logo and icon. Changes appear across login, header, profile, and PWA."
+      >
+        <div className="mb-4 flex items-center gap-2 text-sm text-[#081120]/50">
+          <Palette className="h-4 w-4 text-[#0066FF]" />
+          Logo appears on login, signup, header, profile, favicon & mobile home screen
+        </div>
+        <AppBrandingForm initial={branding} />
+      </Card>
 
       <div className="grid gap-4 sm:grid-cols-2">
         {OWNER_SECTIONS.map((section) => (

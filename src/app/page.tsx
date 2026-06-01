@@ -4,8 +4,9 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { isOwnerCreated } from "@/lib/auth/permissions";
+import { getBranding } from "@/lib/branding/get-branding";
 import { Button } from "@/components/ui/button";
-import { BallMark } from "@/components/design/ball-mark";
+import { AppLogoStatic } from "@/components/branding/app-logo";
 import { WorldCupBackground } from "@/components/design/world-cup-background";
 
 export default async function HomePage() {
@@ -14,20 +15,18 @@ export default async function HomePage() {
     redirect("/my-team");
   }
 
-  const ownerExists = await isOwnerCreated();
+  const [ownerExists, branding] = await Promise.all([isOwnerCreated(), getBranding()]);
 
   return (
-    <div className="relative flex min-h-screen flex-col items-center justify-center px-4">
+    <div className="relative flex min-h-screen flex-col items-center justify-center overflow-x-hidden px-4">
       <WorldCupBackground theme="auth" />
 
-      <div className="animate-wc-flow-in mx-auto max-w-xl text-center">
+      <div className="animate-wc-flow-in mx-auto w-full max-w-xl text-center">
         <div className="mb-8 flex justify-center">
-          <BallMark size="lg" className="scale-[1.8]" />
+          <AppLogoStatic branding={branding} showName={false} size="xl" />
         </div>
 
-        <h1 className="text-display text-4xl sm:text-5xl">
-          World Cup Fantasy Draft
-        </h1>
+        <h1 className="text-display text-4xl sm:text-5xl">{branding.appName}</h1>
         <p className="text-body mx-auto mt-5 max-w-md text-base leading-relaxed">
           A premium private competition for the World Cup. Draft players, make
           predictions, place bets, and compete with your friends.

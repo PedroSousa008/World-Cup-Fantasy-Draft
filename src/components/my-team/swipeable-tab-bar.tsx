@@ -29,7 +29,7 @@ export function SwipeableTabBar({
   return (
     <div
       ref={scrollRef}
-      className="flex gap-2 overflow-x-auto px-4 pb-1 scrollbar-none snap-x snap-mandatory"
+      className="flex gap-2 overflow-x-auto px-4 pb-1 scrollbar-none scroll-contain-x snap-x snap-mandatory"
     >
       {MY_TEAM_TABS.map((tab) => {
         const isActive = activeTab === tab.slug;

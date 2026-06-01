@@ -49,7 +49,7 @@ function CornerRibbons({ theme }: { theme: ScreenTheme }) {
     <>
       {/* Top-right blue flowing ribbon */}
       <svg
-        className="animate-wc-ribbon-drift absolute -right-[10%] -top-[15%] h-[70vh] w-[70vw] max-w-none opacity-[var(--ribbon-blue-op)]"
+        className="animate-wc-ribbon-drift absolute -right-[10%] -top-[15%] h-[70vh] w-[70vw] max-w-[700px] opacity-[var(--ribbon-blue-op)]"
         style={{ "--ribbon-blue-op": blueOpacity } as React.CSSProperties}
         viewBox="0 0 800 600"
         fill="none"
@@ -69,7 +69,7 @@ function CornerRibbons({ theme }: { theme: ScreenTheme }) {
 
       {/* Bottom-left red curved segment */}
       <svg
-        className="animate-wc-ribbon-drift-reverse absolute -bottom-[20%] -left-[15%] h-[65vh] w-[65vw] max-w-none"
+        className="animate-wc-ribbon-drift-reverse absolute -bottom-[20%] -left-[15%] h-[65vh] w-[65vw] max-w-[650px]"
         style={{ opacity: redOpacity }}
         viewBox="0 0 700 550"
         fill="none"
@@ -88,7 +88,7 @@ function CornerRibbons({ theme }: { theme: ScreenTheme }) {
 
       {/* Bottom-right green motion accent */}
       <svg
-        className="animate-wc-ribbon-drift absolute -bottom-[10%] -right-[5%] h-[50vh] w-[50vw] max-w-none"
+        className="animate-wc-ribbon-drift absolute -bottom-[10%] -right-[5%] h-[50vh] w-[50vw] max-w-[500px]"
         style={{ opacity: greenOpacity }}
         viewBox="0 0 500 400"
         fill="none"
@@ -171,8 +171,8 @@ function AuthLayer() {
 
 function MyTeamLayer() {
   return (
-    <div className="absolute inset-0 flex items-center justify-center opacity-[0.05]">
-      <svg viewBox="0 0 900 600" className="h-[80vh] w-[120vw] max-w-none">
+    <div className="absolute inset-0 flex items-center justify-center overflow-hidden opacity-[0.05]">
+      <svg viewBox="0 0 900 600" className="h-full w-full max-w-full" preserveAspectRatio="xMidYMid slice">
         {/* Pitch outline — premium tournament feel */}
         <rect x="80" y="60" width="740" height="480" rx="24" fill="none" stroke="#00C853" strokeWidth="2" />
         <line x1="450" y1="60" x2="450" y2="540" stroke="#00C853" strokeWidth="1.5" opacity="0.6" />
@@ -235,7 +235,7 @@ function PredictionsLayer() {
 function BetsLayer() {
   return (
     <svg
-      className="animate-wc-ribbon-drift absolute right-0 top-1/4 h-[60vh] w-[80vw] opacity-[0.09]"
+      className="animate-wc-ribbon-drift absolute right-0 top-1/4 h-[60vh] w-full max-w-[600px] opacity-[0.09]"
       viewBox="0 0 600 400"
     >
       <path

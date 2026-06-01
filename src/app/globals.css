@@ -28,12 +28,26 @@
 
 html {
   scroll-behavior: smooth;
+  overflow-x: hidden;
+  width: 100%;
+  max-width: 100%;
 }
 
 body {
   background-color: var(--color-wc-navy);
   color: var(--color-foreground);
   min-height: 100dvh;
+  overflow-x: hidden;
+  width: 100%;
+  max-width: 100%;
+  position: relative;
+}
+
+/* Prevent horizontal page drift on mobile */
+#__next,
+[data-app-root] {
+  overflow-x: hidden;
+  max-width: 100%;
 }
 
 ::selection {
@@ -187,4 +201,12 @@ body {
 }
 .scrollbar-none::-webkit-scrollbar {
   display: none;
+}
+
+/* Contain horizontal scroll areas so they never expand the page */
+.scroll-contain-x {
+  overflow-x: auto;
+  max-width: 100%;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
 }

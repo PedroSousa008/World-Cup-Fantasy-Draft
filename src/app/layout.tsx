@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { SessionProvider } from "next-auth/react";
+import { BrandingProvider } from "@/contexts/branding-context";
+import { getBranding } from "@/lib/branding/get-branding";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -13,29 +15,45 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-export const metadata: Metadata = {
-  title: "World Cup Fantasy Draft",
-  description: "Private World Cup fantasy competition for friends",
-  icons: {
-    icon: "/favicon.svg",
-  },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const branding = await getBranding();
+  return {
+    title: branding.appName,
+    description: "Private World Cup fantasy competition for friends",
+    icons: {
+      icon: "/api/branding/icon",
+      apple: "/api/branding/icon",
+    },
+    appleWebApp: {
+      title: branding.appShortName,
+    },
+  };
+}
 
 export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
+  userScalable: true,
   themeColor: "#081120",
+  viewportFit: "cover",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const branding = await getBranding();
+
   return (
-    <html lang="en">
+    <html lang="en" className="overflow-x-hidden">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} min-h-screen font-sans antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} min-h-screen overflow-x-hidden font-sans antialiased`}
       >
-        <SessionProvider>{children}</SessionProvider>
+        <BrandingProvider branding={branding}>
+          <SessionProvider>{children}</SessionProvider>
+        </BrandingProvider>
       </body>
     </html>
   );
