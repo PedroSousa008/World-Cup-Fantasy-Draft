@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createPlayerAction, uploadPlayerPhotoAction } from "@/lib/actions/owner/players";
+import { invalidateDraftCache } from "@/lib/draft/draft-cache";
 import { PLAYER_POSITIONS } from "@/lib/players/types";
 import { Button } from "@/components/ui/button";
 
@@ -52,6 +53,7 @@ export function CreatePlayerForm({ nationSlug, nationName }: CreatePlayerFormPro
         setName("");
         setClub("");
         setFile(null);
+        invalidateDraftCache();
         router.refresh();
       })();
     });

@@ -8,6 +8,8 @@ interface PlayerAvatarProps {
   photoUrl?: string | null;
   className?: string;
   initialsClassName?: string;
+  /** Use native lazy loading for grid thumbnails */
+  lazy?: boolean;
 }
 
 export function PlayerAvatar({
@@ -15,6 +17,7 @@ export function PlayerAvatar({
   photoUrl,
   className,
   initialsClassName,
+  lazy = false,
 }: PlayerAvatarProps) {
   const src = resolvePlayerPhotoUrl(photoUrl);
   const initials = name
@@ -27,7 +30,13 @@ export function PlayerAvatar({
   if (src) {
     return (
       // eslint-disable-next-line @next/next/no-img-element
-      <img src={src} alt="" className={cn("object-cover", className)} />
+      <img
+        src={src}
+        alt=""
+        loading={lazy ? "lazy" : undefined}
+        decoding="async"
+        className={cn("object-cover", className)}
+      />
     );
   }
 

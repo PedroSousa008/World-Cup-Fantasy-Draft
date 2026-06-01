@@ -9,6 +9,7 @@ import {
   unassignPlayerAction,
   uploadPlayerPhotoAction,
 } from "@/lib/actions/owner/players";
+import { invalidateDraftCache } from "@/lib/draft/draft-cache";
 import { getPositionLabel } from "@/lib/players/types";
 import { Button } from "@/components/ui/button";
 
@@ -80,7 +81,10 @@ export function NationPlayersList({ players, users }: NationPlayersListProps) {
                   fd.set("playerId", player.id);
                   fd.set("file", file);
                   startTransition(() => {
-                    void uploadPlayerPhotoAction(fd).then(() => router.refresh());
+                    void uploadPlayerPhotoAction(fd).then(() => {
+                      invalidateDraftCache();
+                      router.refresh();
+                    });
                   });
                 }}
               />
@@ -98,7 +102,10 @@ export function NationPlayersList({ players, users }: NationPlayersListProps) {
                     void assignPlayerToUserAction({
                       playerId: player.id,
                       userId,
-                    }).then(() => router.refresh());
+                    }).then(() => {
+                      invalidateDraftCache();
+                      router.refresh();
+                    });
                   });
                 }}
               >
@@ -118,7 +125,10 @@ export function NationPlayersList({ players, users }: NationPlayersListProps) {
                 disabled={pending}
                 onClick={() => {
                   startTransition(() => {
-                    void unassignPlayerAction(player.id).then(() => router.refresh());
+                    void unassignPlayerAction(player.id).then(() => {
+                      invalidateDraftCache();
+                      router.refresh();
+                    });
                   });
                 }}
               >
@@ -134,7 +144,10 @@ export function NationPlayersList({ players, users }: NationPlayersListProps) {
               onClick={() => {
                 if (!confirm(`Delete ${player.name}?`)) return;
                 startTransition(() => {
-                  void deletePlayerAction(player.id).then(() => router.refresh());
+                  void deletePlayerAction(player.id).then(() => {
+                    invalidateDraftCache();
+                    router.refresh();
+                  });
                 });
               }}
             >

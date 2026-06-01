@@ -2,21 +2,28 @@ import { prisma } from "@/lib/db/prisma";
 import type { DraftData, DraftPlayerCard } from "@/lib/draft/types";
 import { getNationFlag } from "@/lib/nations";
 import type { PlayerPosition } from "@/lib/players/types";
-import { loadAllPlayerStats } from "@/lib/scoring/load-all-player-stats";
 
+/**
+ * Lightweight draft payload — no full stats scan (rankings/detail load points separately).
+ */
 export async function getDraftData(userId: string): Promise<DraftData> {
-  const [players, saved, statsMap] = await Promise.all([
+  const [players, saved] = await Promise.all([
     prisma.player.findMany({
       orderBy: [{ nationality: "asc" }, { name: "asc" }],
-      include: {
+      select: {
+        id: true,
+        name: true,
+        photoUrl: true,
+        position: true,
+        nationality: true,
         nationalTeam: {
           select: { slug: true, flagEmoji: true, name: true },
         },
         fantasySlots: {
           take: 1,
-          include: {
+          select: {
             fantasyTeam: {
-              include: {
+              select: {
                 user: { select: { teamName: true, selectedNation: true } },
               },
             },
@@ -28,13 +35,10 @@ export async function getDraftData(userId: string): Promise<DraftData> {
       where: { userId },
       select: { playerId: true },
     }),
-    loadAllPlayerStats(),
   ]);
 
   const draftPlayers: DraftPlayerCard[] = players.map((player) => {
     const owner = player.fantasySlots[0]?.fantasyTeam.user ?? null;
-    const stats = statsMap.get(player.id);
-
     const nationName = player.nationalTeam?.name ?? player.nationality;
 
     return {
@@ -45,7 +49,7 @@ export async function getDraftData(userId: string): Promise<DraftData> {
       nation: nationName,
       nationSlug: player.nationalTeam?.slug ?? null,
       nationFlag: player.nationalTeam?.flagEmoji ?? getNationFlag(nationName),
-      totalPoints: stats?.totalPoints ?? 0,
+      totalPoints: 0,
       ownerTeamName: owner?.teamName ?? null,
       ownerSelectedNation: owner?.selectedNation ?? null,
       isAssigned: player.fantasySlots.length > 0,

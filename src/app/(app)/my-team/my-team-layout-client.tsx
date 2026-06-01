@@ -1,6 +1,7 @@
 "use client";
 
 import { SquadProvider } from "@/contexts/squad-context";
+import { DraftDataProvider } from "@/contexts/draft-data-context";
 import { RankingsDataProvider } from "@/contexts/rankings-data-context";
 import { MyTeamTabsProvider } from "@/contexts/my-team-tabs-context";
 import { usePathname } from "next/navigation";
@@ -24,7 +25,9 @@ export function MyTeamLayoutClient({ teamName, children }: MyTeamLayoutClientPro
   return (
     <SquadProvider teamName={teamName}>
       <RankingsDataProvider>
-        <MyTeamTabsProvider initialTab={initialTab}>{children}</MyTeamTabsProvider>
+        <DraftDataProvider>
+          <MyTeamTabsProvider initialTab={initialTab}>{children}</MyTeamTabsProvider>
+        </DraftDataProvider>
       </RankingsDataProvider>
     </SquadProvider>
   );

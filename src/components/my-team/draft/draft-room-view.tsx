@@ -1,17 +1,18 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
-import { DraftPlayerCardTile } from "@/components/my-team/draft/draft-player-card";
+import { useCallback, useMemo, useState, useTransition } from "react";
 import { DraftFilters } from "@/components/my-team/draft/draft-filters";
+import { DraftPlayerGrid } from "@/components/my-team/draft/draft-player-grid";
+import { useDraftData } from "@/contexts/draft-data-context";
+import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import {
   filterDraftPlayers,
   type DraftData,
   type DraftFilterState,
   type DraftMode,
 } from "@/lib/draft/types";
-import { cn } from "@/lib/utils";
 import { savePlayerAction, unsavePlayerAction } from "@/lib/actions/saved-players";
+import { cn } from "@/lib/utils";
 
 const DRAFT_MODES: { value: DraftMode; label: string }[] = [
   { value: "initial", label: "Initial Draft" },
@@ -24,7 +25,7 @@ interface DraftRoomViewProps {
 }
 
 export function DraftRoomView({ data }: DraftRoomViewProps) {
-  const router = useRouter();
+  const { patchSavedIds } = useDraftData();
   const [mode, setMode] = useState<DraftMode>("initial");
   const [filters, setFilters] = useState<DraftFilterState>({
     position: null,
@@ -33,19 +34,49 @@ export function DraftRoomView({ data }: DraftRoomViewProps) {
   });
   const [, startTransition] = useTransition();
 
+  const debouncedSearch = useDebouncedValue(filters.search, 200);
+  const filtersForQuery = useMemo(
+    () => ({ ...filters, search: debouncedSearch }),
+    [filters, debouncedSearch]
+  );
+
   const savedSet = useMemo(() => new Set(data.savedPlayerIds), [data.savedPlayerIds]);
+
+  const unassignedPlayers = useMemo(
+    () => data.players.filter((p) => !p.isAssigned),
+    [data.players]
+  );
 
   const filtered = useMemo(() => {
     if (mode === "initial") {
-      return filterDraftPlayers(data.players, filters);
+      return filterDraftPlayers(data.players, filtersForQuery);
     }
     if (mode === "redraft") {
-      return filterDraftPlayers(data.players, filters, { onlyUnassigned: true });
+      return filterDraftPlayers(unassignedPlayers, filtersForQuery);
     }
-    return filterDraftPlayers(data.players, filters, {
+    return filterDraftPlayers(data.players, filtersForQuery, {
       savedIds: data.savedPlayerIds,
     });
-  }, [data.players, data.savedPlayerIds, filters, mode]);
+  }, [mode, data.players, unassignedPlayers, data.savedPlayerIds, filtersForQuery]);
+
+  const handleToggleSaved = useCallback(
+    (playerId: string, isSaved: boolean) => {
+      startTransition(() => {
+        void (async () => {
+          const result = isSaved
+            ? await unsavePlayerAction(playerId)
+            : await savePlayerAction(playerId);
+          if (!result.ok) return;
+
+          const next = isSaved
+            ? data.savedPlayerIds.filter((id) => id !== playerId)
+            : [...data.savedPlayerIds, playerId];
+          patchSavedIds(next);
+        })();
+      });
+    },
+    [data.savedPlayerIds, patchSavedIds]
+  );
 
   const emptyMessage =
     mode === "saved"
@@ -62,7 +93,6 @@ export function DraftRoomView({ data }: DraftRoomViewProps) {
           <p className="text-body text-sm">Browse players and track ownership</p>
         </div>
 
-        {/* Mode tabs */}
         <div className="grid grid-cols-3 gap-1 rounded-xl bg-white/8 p-0.5">
           {DRAFT_MODES.map((m) => (
             <button
@@ -70,10 +100,8 @@ export function DraftRoomView({ data }: DraftRoomViewProps) {
               type="button"
               onClick={() => setMode(m.value)}
               className={cn(
-                "min-h-[40px] rounded-lg px-1 py-1.5 text-center text-[10px] font-bold leading-tight transition-all active:scale-[0.97]",
-                mode === m.value
-                  ? "bg-[#0066FF] text-white shadow-sm"
-                  : "text-white/50"
+                "min-h-[40px] rounded-lg px-1 py-1.5 text-center text-[10px] font-bold leading-tight active:scale-[0.97]",
+                mode === m.value ? "bg-[#0066FF] text-white shadow-sm" : "text-white/50"
               )}
             >
               {m.label}
@@ -81,9 +109,9 @@ export function DraftRoomView({ data }: DraftRoomViewProps) {
           ))}
         </div>
 
-        {mode !== "saved" && <DraftFilters filters={filters} onChange={setFilters} />}
-
-        {mode === "saved" && (
+        {mode !== "saved" ? (
+          <DraftFilters filters={filters} onChange={setFilters} />
+        ) : (
           <DraftFilters filters={filters} onChange={setFilters} />
         )}
       </div>
@@ -100,33 +128,20 @@ export function DraftRoomView({ data }: DraftRoomViewProps) {
           )}
         </p>
 
-        {filtered.length === 0 ? (
+        {mode === "saved" && data.savedPlayerIds.length === 0 ? (
+          <div className="rounded-2xl bg-white/95 p-6 text-center shadow-lg ring-1 ring-black/5">
+            <p className="text-sm font-medium text-[#081120]/60">{emptyMessage}</p>
+          </div>
+        ) : filtered.length === 0 ? (
           <div className="rounded-2xl bg-white/95 p-6 text-center shadow-lg ring-1 ring-black/5">
             <p className="text-sm font-medium text-[#081120]/60">{emptyMessage}</p>
           </div>
         ) : (
-          <div className="grid grid-cols-3 gap-2">
-            {filtered.map((player) => (
-              <DraftPlayerCardTile
-                key={player.id}
-                player={player}
-                isSaved={savedSet.has(player.id)}
-                onToggleSaved={() => {
-                  startTransition(() => {
-                    void (async () => {
-                      if (savedSet.has(player.id)) {
-                        await unsavePlayerAction(player.id);
-                      } else {
-                        await savePlayerAction(player.id);
-                      }
-                      router.refresh();
-                    })();
-                  });
-                }}
-                onClick={() => router.push(`/my-team/player/${player.id}?from=draft`)}
-              />
-            ))}
-          </div>
+          <DraftPlayerGrid
+            players={filtered}
+            savedSet={savedSet}
+            onToggleSaved={handleToggleSaved}
+          />
         )}
       </div>
     </div>

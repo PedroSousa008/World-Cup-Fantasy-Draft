@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import { PlayerAvatar } from "@/components/player/player-avatar";
 import { getNationFlag } from "@/lib/nations";
 import { getPositionLabel } from "@/lib/players/types";
@@ -13,7 +14,7 @@ interface DraftPlayerCardTileProps {
   onClick: () => void;
 }
 
-export function DraftPlayerCardTile({
+function DraftPlayerCardTileInner({
   player,
   isSaved,
   onToggleSaved,
@@ -31,13 +32,14 @@ export function DraftPlayerCardTile({
       }}
       className={cn(
         "flex min-w-0 flex-col rounded-xl bg-white/95 p-2 text-left shadow-md ring-1 ring-black/5",
-        "cursor-pointer transition-all active:scale-[0.97]"
+        "cursor-pointer active:scale-[0.97]"
       )}
     >
       <div className="relative mx-auto h-12 w-12 shrink-0 overflow-hidden rounded-full">
         <PlayerAvatar
           name={player.name}
           photoUrl={player.photoUrl}
+          lazy
           className="h-12 w-12 rounded-full"
           initialsClassName="h-12 w-12 text-[10px]"
         />
@@ -57,10 +59,13 @@ export function DraftPlayerCardTile({
         {getPositionLabel(player.position)} · {flag}
       </p>
 
-      <p className="mt-1 text-center text-[10px] font-black tabular-nums text-[#0066FF]">
-        {player.totalPoints}
-        <span className="text-[8px] font-semibold text-[#081120]/40"> pts</span>
-      </p>
+      {player.totalPoints > 0 && (
+        <p className="mt-1 text-center text-[10px] font-black tabular-nums text-[#0066FF]">
+          {player.totalPoints}
+          <span className="text-[8px] font-semibold text-[#081120]/40"> pts</span>
+        </p>
+      )}
+
       <button
         type="button"
         onClick={(e) => {
@@ -68,7 +73,7 @@ export function DraftPlayerCardTile({
           onToggleSaved();
         }}
         className={cn(
-          "mt-2 h-8 rounded-lg px-2 text-[9px] font-bold transition-colors",
+          "mt-2 h-8 rounded-lg px-2 text-[9px] font-bold",
           isSaved
             ? "bg-[#081120]/10 text-[#081120] ring-1 ring-[#081120]/10"
             : "bg-[#0066FF] text-white"
@@ -79,3 +84,5 @@ export function DraftPlayerCardTile({
     </div>
   );
 }
+
+export const DraftPlayerCardTile = memo(DraftPlayerCardTileInner);

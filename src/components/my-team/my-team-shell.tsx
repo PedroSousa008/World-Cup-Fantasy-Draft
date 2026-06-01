@@ -3,12 +3,11 @@
 import { SwipeableTabBar } from "@/components/my-team/swipeable-tab-bar";
 import { TeamView } from "@/components/my-team/team/team-view";
 import { RankingsTab } from "@/components/my-team/rankings/rankings-tab";
-import { DraftRoomView } from "@/components/my-team/draft/draft-room-view";
+import { DraftTab } from "@/components/my-team/draft/draft-tab";
 import { PowersView } from "@/components/my-team/powers/powers-view";
 import { TabLoadingPlaceholder } from "@/components/my-team/tab-loading-placeholder";
 import { useMyTeamTabs } from "@/contexts/my-team-tabs-context";
 import { useLazyTabResource } from "@/hooks/use-lazy-tab-resource";
-import type { DraftData } from "@/lib/draft/types";
 import type { PowersPageData } from "@/lib/powers/types";
 
 interface MyTeamShellProps {
@@ -22,10 +21,6 @@ interface MyTeamShellProps {
 export function MyTeamShell({ user }: MyTeamShellProps) {
   const { activeTab, setActiveTab } = useMyTeamTabs();
 
-  const draft = useLazyTabResource<DraftData>(
-    "/api/my-team/draft",
-    activeTab === "draft"
-  );
   const powers = useLazyTabResource<PowersPageData>(
     "/api/my-team/powers",
     activeTab === "powers"
@@ -42,12 +37,7 @@ export function MyTeamShell({ user }: MyTeamShellProps) {
           <TeamView teamName={user.teamName} selectedNation={user.selectedNation} />
         )}
         {activeTab === "rankings" && <RankingsTab />}
-        {activeTab === "draft" &&
-          (draft.data ? (
-            <DraftRoomView data={draft.data} />
-          ) : (
-            <TabLoadingPlaceholder label="draft room" />
-          ))}
+        {activeTab === "draft" && <DraftTab />}
         {activeTab === "powers" &&
           (powers.data ? (
             <PowersView data={powers.data} />
