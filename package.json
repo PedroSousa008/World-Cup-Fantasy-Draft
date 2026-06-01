@@ -19,7 +19,8 @@
     "players:sync": "tsx scripts/sync-players-from-folders.ts",
     "players:portugal": "tsx scripts/register-portugal-batch.ts",
     "players:mexico": "tsx scripts/register-mexico-batch.ts",
-    "players:south-korea": "tsx scripts/register-south-korea-batch.ts"
+    "players:south-korea": "tsx scripts/register-south-korea-batch.ts",
+    "players:czech-republic": "tsx scripts/register-czech-republic-batch.ts"
   },
   "prisma": {
     "seed": "npx tsx prisma/seed.ts"
