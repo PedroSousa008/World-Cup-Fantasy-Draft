@@ -20,6 +20,14 @@ const PLAYERS = [
   { file: "veiga.png", name: "Gabri Veiga", position: "Midfielder" },
   { file: "velho.PNG", name: "Ricardo Velho", position: "Goalkeeper" },
   { file: "vitinha.png", name: "Vitinha", position: "Midfielder" },
+  { file: "felix.png", name: "Felix", position: "Attacker" },
+  { file: "trincao.png", name: "Trincão", position: "Attacker" },
+  { file: "conceicao.png", name: "Conceição", position: "Attacker" },
+  { file: "neto.png", name: "Neto", position: "Attacker" },
+  { file: "leao.png", name: "Rafael Leão", position: "Attacker" },
+  { file: "guedes.png", name: "Guedes", position: "Attacker" },
+  { file: "ramos.png", name: "Gonçalo Ramos", position: "Attacker" },
+  { file: "cristiano.png", name: "Cristiano Ronaldo", position: "Attacker" },
 ] as const;
 
 async function main() {
