@@ -29,7 +29,8 @@
     "players:netherlands": "tsx scripts/register-netherlands-batch.ts",
     "players:germany": "tsx scripts/register-germany-batch.ts",
     "players:brazil": "tsx scripts/register-brazil-batch.ts",
-    "players:morocco": "tsx scripts/register-morocco-batch.ts"
+    "players:morocco": "tsx scripts/register-morocco-batch.ts",
+    "players:belgium": "tsx scripts/register-belgium-batch.ts"
   },
   "prisma": {
     "seed": "npx tsx prisma/seed.ts"
