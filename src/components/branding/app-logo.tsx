@@ -15,12 +15,21 @@ interface AppLogoProps {
   priority?: boolean;
 }
 
-const markSizes = {
-  sm: "h-9 w-9",
-  md: "h-11 w-11",
-  lg: "h-16 w-16",
-  xl: "h-28 w-28",
-  hero: "h-40 w-40 sm:h-48 sm:w-48",
+/** Outer circle + inner padding tuned so the full logo artwork fits without clipping */
+const frameSizes = {
+  sm: { box: "h-9 w-9", pad: "p-[3px]" },
+  md: { box: "h-12 w-12", pad: "p-1" },
+  lg: { box: "h-[72px] w-[72px]", pad: "p-1.5" },
+  xl: { box: "h-32 w-32", pad: "p-2" },
+  hero: { box: "h-44 w-44 sm:h-52 sm:w-52", pad: "p-2.5 sm:p-3" },
+} as const;
+
+const ballMarkSizes = {
+  sm: "sm" as const,
+  md: "sm" as const,
+  lg: "md" as const,
+  xl: "lg" as const,
+  hero: "lg" as const,
 };
 
 function resolveSrc(
@@ -33,6 +42,34 @@ function resolveSrc(
   return branding.logoSrc ?? APP_LOGO_PATH;
 }
 
+function LogoFrame({
+  size,
+  children,
+  className,
+}: {
+  size: keyof typeof frameSizes;
+  children: React.ReactNode;
+  className?: string;
+}) {
+  const { box, pad } = frameSizes[size];
+
+  return (
+    <div
+      className={cn(
+        "relative flex shrink-0 items-center justify-center overflow-hidden rounded-full",
+        "bg-white shadow-[0_2px_12px_rgba(0,0,0,0.25)]",
+        "ring-2 ring-white/15 ring-offset-2 ring-offset-[#081120]/0",
+        box,
+        className
+      )}
+    >
+      <div className={cn("flex h-full w-full items-center justify-center", pad)}>
+        {children}
+      </div>
+    </div>
+  );
+}
+
 function LogoImage({
   src,
   alt,
@@ -42,22 +79,22 @@ function LogoImage({
 }: {
   src: string;
   alt: string;
-  size: keyof typeof markSizes;
+  size: keyof typeof frameSizes;
   priority?: boolean;
   onError?: () => void;
 }) {
   return (
-    <div className={cn("relative shrink-0 bg-transparent", markSizes[size])}>
+    <LogoFrame size={size}>
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={src}
         alt={alt}
         decoding="async"
         fetchPriority={priority ? "high" : "auto"}
-        className="h-full w-full bg-transparent object-contain"
+        className="h-full w-full object-contain"
         onError={onError}
       />
-    </div>
+    </LogoFrame>
   );
 }
 
@@ -74,9 +111,11 @@ export function AppLogo({
   const src = resolveSrc(branding, variant);
 
   return (
-    <div className={cn("flex min-w-0 items-center gap-2.5 bg-transparent", className)}>
+    <div className={cn("flex min-w-0 items-center gap-2.5", className)}>
       {imgFailed ? (
-        <BallMark size={size === "hero" || size === "xl" ? "lg" : size === "lg" ? "lg" : size} />
+        <LogoFrame size={size}>
+          <BallMark size={ballMarkSizes[size]} className="h-full w-full" />
+        </LogoFrame>
       ) : (
         <LogoImage
           src={src}
@@ -119,7 +158,7 @@ export function AppLogoStatic({
   const src = resolveSrc(branding, variant);
 
   return (
-    <div className={cn("flex min-w-0 items-center gap-2.5 bg-transparent", className)}>
+    <div className={cn("flex min-w-0 items-center gap-2.5", className)}>
       <LogoImage src={src} alt={branding.appName} size={size} priority={priority} />
       {showName && (
         <span
