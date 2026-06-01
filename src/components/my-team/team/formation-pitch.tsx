@@ -14,6 +14,30 @@ interface FormationPitchProps {
   onPlayerClick: (slotId: string) => void;
 }
 
+function PitchMarkings() {
+  return (
+    <div className="pointer-events-none absolute inset-0">
+      {/* Touchlines */}
+      <div className="absolute inset-x-3 top-2 bottom-2 rounded-sm border border-white/25" />
+
+      {/* Halfway line (top of attacking half) */}
+      <div className="absolute inset-x-3 top-2 h-px bg-white/30" />
+
+      {/* Half center circle at top */}
+      <div className="absolute left-1/2 top-2 h-[52px] w-[104px] -translate-x-1/2 rounded-b-full border border-b-white/25 border-l-white/25 border-r-white/25 border-t-transparent" />
+
+      {/* Penalty area (bottom — GK end) */}
+      <div className="absolute bottom-2 left-1/2 h-[72px] w-[58%] -translate-x-1/2 border border-b-0 border-white/25" />
+
+      {/* Goal area (six-yard box) */}
+      <div className="absolute bottom-2 left-1/2 h-[36px] w-[32%] -translate-x-1/2 border border-b-0 border-white/25" />
+
+      {/* Goal line accent */}
+      <div className="absolute inset-x-3 bottom-2 h-0.5 bg-white/35" />
+    </div>
+  );
+}
+
 export function FormationPitch({
   starterSlots,
   getPlayer,
@@ -29,28 +53,35 @@ export function FormationPitch({
     GK: starterSlots.filter((s) => s.position === "GK"),
   };
 
+  const rowGap = (count: number) => (count >= 5 ? "gap-x-1" : count >= 4 ? "gap-x-1.5" : "gap-x-2");
+
   return (
-    <div className="relative mx-4 overflow-hidden rounded-3xl border border-[#FFD700]/20 shadow-[0_8px_40px_rgba(255,215,0,0.08)]">
-      <div className="relative bg-gradient-to-b from-[#1a6b38] via-[#1e7a40] to-[#155a30] px-3 py-5">
-        <div className="pointer-events-none absolute inset-0 opacity-[0.12]">
-          <div className="absolute inset-x-4 inset-y-3 rounded-2xl border-2 border-white" />
-          <div className="absolute left-1/2 top-3 bottom-3 w-px -translate-x-1/2 bg-white" />
-          <div className="absolute left-1/2 top-1/2 h-14 w-14 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white" />
-          <div className="absolute left-1/2 top-3 h-10 w-20 -translate-x-1/2 border-2 border-b-0 border-white" />
-          <div className="absolute bottom-3 left-1/2 h-10 w-20 -translate-x-1/2 border-2 border-t-0 border-white" />
-        </div>
+    <div className="relative mx-3 overflow-hidden rounded-2xl border border-white/10 shadow-lg sm:mx-4">
+      {/* FPL-style attacking half — gradient grass */}
+      <div className="relative bg-gradient-to-b from-[#3a9458] via-[#2d8048] to-[#1e6b38] px-2 py-4 sm:px-3 sm:py-5">
+        {/* Subtle grass stripes */}
+        <div
+          className="pointer-events-none absolute inset-0 opacity-[0.07]"
+          style={{
+            backgroundImage:
+              "repeating-linear-gradient(90deg, #fff 0px, #fff 1px, transparent 1px, transparent 28px)",
+          }}
+        />
 
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(255,215,0,0.06),transparent_50%)]" />
+        <PitchMarkings />
 
-        <div className="relative space-y-3 transition-all duration-500 ease-out">
+        <div className="relative flex flex-col gap-3 sm:gap-4">
           {(["FWD", "MID", "DEF", "GK"] as const).map((line) => (
             <div
               key={line}
               className={cn(
-                "flex justify-center gap-2 transition-all duration-500",
-                line === "GK" && "pt-1"
+                "grid w-full items-end justify-items-center",
+                rowGap(lines[line].length),
+                line === "GK" && "pb-1"
               )}
-              style={{ gap: lines[line].length > 4 ? "4px" : "8px" }}
+              style={{
+                gridTemplateColumns: `repeat(${lines[line].length}, minmax(0, 1fr))`,
+              }}
             >
               {lines[line].map((slot) => {
                 const player = getPlayer(slot.id);

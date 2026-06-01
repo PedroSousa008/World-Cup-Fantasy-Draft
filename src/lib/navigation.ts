@@ -29,12 +29,13 @@ export const OWNER_NAV: NavItem[] = [
 export type SubTab = {
   label: string;
   slug: string;
+  shortLabel?: string;
 };
 
 export const MY_TEAM_TABS: SubTab[] = [
   { label: "Team", slug: "team" },
   { label: "Rankings", slug: "rankings" },
-  { label: "Draft Room", slug: "draft" },
+  { label: "Draft Room", shortLabel: "Draft", slug: "draft" },
   { label: "Powers", slug: "powers" },
 ];
 

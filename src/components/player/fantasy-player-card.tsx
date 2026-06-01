@@ -93,7 +93,7 @@ export function FantasyPlayerCard({
   const isLive = player.matchStatus === "live";
 
   const widthClass = {
-    pitch: "w-[78px]",
+    pitch: "w-full max-w-[72px]",
     bench: "w-[96px]",
     list: "w-full",
     full: "w-full max-w-[280px] mx-auto",

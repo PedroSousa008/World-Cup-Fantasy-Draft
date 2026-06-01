@@ -29,8 +29,8 @@ export function PitchSlotCard({
         type="button"
         onClick={onEmptyClick}
         className={cn(
-          "flex min-h-[100px] w-[78px] flex-col items-center justify-center gap-1 rounded-2xl",
-          "border-2 border-dashed border-[#FFD700]/30 bg-black/20 px-1 py-2",
+          "flex min-h-[88px] w-full max-w-[72px] flex-col items-center justify-center gap-1 rounded-xl",
+          "border-2 border-dashed border-white/30 bg-white/5 px-1 py-2",
           "transition-all duration-300 active:scale-95"
         )}
       >

@@ -47,14 +47,14 @@ function LogoImage({
   onError?: () => void;
 }) {
   return (
-    <div className={cn("relative shrink-0", markSizes[size])}>
+    <div className={cn("relative shrink-0 bg-transparent", markSizes[size])}>
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={src}
         alt={alt}
         decoding="async"
         fetchPriority={priority ? "high" : "auto"}
-        className="h-full w-full object-contain"
+        className="h-full w-full bg-transparent object-contain"
         onError={onError}
       />
     </div>
@@ -74,7 +74,7 @@ export function AppLogo({
   const src = resolveSrc(branding, variant);
 
   return (
-    <div className={cn("flex min-w-0 items-center gap-2.5", className)}>
+    <div className={cn("flex min-w-0 items-center gap-2.5 bg-transparent", className)}>
       {imgFailed ? (
         <BallMark size={size === "hero" || size === "xl" ? "lg" : size === "lg" ? "lg" : size} />
       ) : (
@@ -119,7 +119,7 @@ export function AppLogoStatic({
   const src = resolveSrc(branding, variant);
 
   return (
-    <div className={cn("flex min-w-0 items-center gap-2.5", className)}>
+    <div className={cn("flex min-w-0 items-center gap-2.5 bg-transparent", className)}>
       <LogoImage src={src} alt={branding.appName} size={size} priority={priority} />
       {showName && (
         <span
