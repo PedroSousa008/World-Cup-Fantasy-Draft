@@ -1,31 +1,51 @@
 "use client";
 
-import { useState } from "react";
-import { BottomSheet } from "@/components/ui/bottom-sheet";
+import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { PowerActivateSheet } from "@/components/my-team/powers/power-activate-sheet";
 import { Button } from "@/components/ui/button";
-import { MOCK_POWERS, type PowerCard } from "@/lib/mock/my-team-data";
+import {
+  acceptRivalChallengeAction,
+  declineRivalChallengeAction,
+  markNotificationReadAction,
+} from "@/lib/actions/powers";
+import type { PowerCardData, PowersPageData } from "@/lib/powers/types";
+import type { PowerDisplayStatus } from "@/lib/powers/types";
 import { cn } from "@/lib/utils";
 
-const STATUS_STYLES = {
+const STATUS_CONFIG: Record<
+  PowerDisplayStatus,
+  { label: string; badge: string; card: string }
+> = {
   available: {
     label: "Available",
     badge: "bg-[#00C853]/15 text-[#00A844]",
-    card: "opacity-100",
+    card: "",
+  },
+  pending: {
+    label: "Pending",
+    badge: "bg-[#FFD700]/20 text-[#B8860B]",
+    card: "ring-1 ring-[#FFD700]/30",
+  },
+  active: {
+    label: "Active",
+    badge: "bg-[#0066FF]/15 text-[#0066FF]",
+    card: "ring-2 ring-[#0066FF]/35",
   },
   used: {
     label: "Used",
     badge: "bg-[#081120]/10 text-[#081120]/50",
-    card: "opacity-75",
+    card: "opacity-60 grayscale",
   },
   expired: {
     label: "Expired",
     badge: "bg-[#081120]/10 text-[#081120]/40",
-    card: "opacity-60",
-  },
-  locked: {
-    label: "Locked",
-    badge: "bg-[#081120]/8 text-[#081120]/35",
     card: "opacity-50 grayscale",
+  },
+  awaiting_acceptance: {
+    label: "Awaiting",
+    badge: "bg-[#FFD700]/20 text-[#B8860B]",
+    card: "ring-1 ring-[#FFD700]/25",
   },
 };
 
@@ -33,20 +53,31 @@ function PowerCardItem({
   power,
   onTap,
 }: {
-  power: PowerCard;
+  power: PowerCardData;
   onTap: () => void;
 }) {
-  const style = STATUS_STYLES[power.status];
+  const style = STATUS_CONFIG[power.displayStatus];
+  const isDisabled =
+    power.displayStatus === "used" ||
+    power.displayStatus === "expired" ||
+    power.displayStatus === "awaiting_acceptance";
 
   return (
-    <button
-      type="button"
-      onClick={onTap}
-      disabled={power.status === "locked"}
+    <div
+      role={isDisabled ? undefined : "button"}
+      tabIndex={isDisabled ? undefined : 0}
+      onClick={isDisabled ? undefined : onTap}
+      onKeyDown={
+        isDisabled
+          ? undefined
+          : (e) => {
+              if (e.key === "Enter" || e.key === " ") onTap();
+            }
+      }
       className={cn(
-        "wc-card w-full p-4 text-left transition-all active:scale-[0.98]",
-        style.card,
-        power.status === "locked" && "cursor-not-allowed"
+        "rounded-2xl bg-white/95 p-4 shadow-lg ring-1 ring-black/5 transition-all",
+        !isDisabled && "cursor-pointer active:scale-[0.99]",
+        style.card
       )}
     >
       <div className="flex items-start gap-3">
@@ -54,7 +85,7 @@ function PowerCardItem({
           {power.icon}
         </span>
         <div className="min-w-0 flex-1">
-          <div className="flex items-center justify-between gap-2">
+          <div className="flex items-start justify-between gap-2">
             <p className="font-bold text-[#081120]">{power.name}</p>
             <span
               className={cn(
@@ -68,118 +99,210 @@ function PowerCardItem({
           <p className="mt-1 text-xs leading-relaxed text-[#081120]/55">
             {power.description}
           </p>
+          {power.matchday != null && (
+            <p className="mt-1.5 text-[10px] font-semibold text-[#0066FF]">
+              Matchday {power.matchday}
+              {power.targetLabel ? ` · ${power.targetLabel}` : ""}
+            </p>
+          )}
+          {power.displayStatus === "used" && power.pointsEffect != null && (
+            <p className="mt-1 text-sm font-black tabular-nums text-[#00C853]">
+              {power.pointsEffect >= 0 ? "+" : ""}
+              {power.pointsEffect} pts
+            </p>
+          )}
+          {power.resultSummary && power.displayStatus === "used" && (
+            <p className="mt-0.5 text-[10px] text-[#081120]/45">{power.resultSummary}</p>
+          )}
+          {power.canActivate && (
+            <p className="mt-2 text-[10px] font-bold uppercase tracking-wide text-[#0066FF]">
+              Tap to activate
+            </p>
+          )}
+          {power.displayStatus === "pending" && power.type === "WILDCARD" && (
+            <p className="mt-2 text-[10px] font-bold uppercase tracking-wide text-[#0066FF]">
+              Tap to make transfers
+            </p>
+          )}
         </div>
       </div>
-    </button>
+    </div>
   );
 }
 
-export function PowersView() {
-  const [selected, setSelected] = useState<PowerCard | null>(null);
+interface PowersViewProps {
+  data: PowersPageData;
+}
+
+export function PowersView({ data }: PowersViewProps) {
+  const router = useRouter();
+  const [, startTransition] = useTransition();
+  const [selected, setSelected] = useState<PowerCardData | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
 
-  const available = MOCK_POWERS.filter((p) => p.status === "available");
-  const usedHistory = MOCK_POWERS.filter((p) => p.history);
+  const availableCount = data.powers.filter((p) => p.displayStatus === "available").length;
+  const unreadCount = data.notifications.filter((n) => !n.read).length;
+
+  const handlePowerTap = (power: PowerCardData) => {
+    if (power.displayStatus === "used" || power.displayStatus === "expired") return;
+    if (power.displayStatus === "awaiting_acceptance") return;
+
+    if (power.displayStatus === "pending" && power.type === "WILDCARD") {
+      setSelected(power);
+      setSheetOpen(true);
+      return;
+    }
+
+    if (power.canActivate || (power.type === "WILDCARD" && data.wildcardActive)) {
+      setSelected(power);
+      setSheetOpen(true);
+    }
+  };
 
   return (
-    <div className="space-y-5 px-4 pb-4">
+    <div className="space-y-5 overflow-x-hidden px-4 pb-6">
       <div>
         <h2 className="text-display text-xl">Powers</h2>
         <p className="text-body text-sm">
-          {available.length} power{available.length !== 1 ? "s" : ""} ready to deploy
+          {availableCount} power{availableCount !== 1 ? "s" : ""} available · each usable
+          once per tournament
         </p>
       </div>
 
+      {data.pendingRivalChallenges.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-xs font-bold uppercase tracking-wide text-white/45">
+            Rival Challenges
+          </p>
+          {data.pendingRivalChallenges.map((c) => (
+            <div
+              key={c.id}
+              className="rounded-2xl bg-white/95 p-4 shadow-lg ring-1 ring-black/5"
+            >
+              <p className="text-sm font-bold text-[#081120]">
+                {c.isIncoming
+                  ? `${c.challengerTeamName} challenged you`
+                  : `Waiting for ${c.opponentTeamName}`}
+              </p>
+              <p className="text-xs text-[#081120]/50">Matchday {c.matchday}</p>
+              {c.isIncoming && (
+                <div className="mt-3 flex gap-2">
+                  <Button
+                    className="flex-1"
+                    onClick={() => {
+                      startTransition(() => {
+                        void acceptRivalChallengeAction(c.id).then(() =>
+                          router.refresh()
+                        );
+                      });
+                    }}
+                  >
+                    Accept
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="flex-1 border-[#081120]/15 text-[#081120]"
+                    onClick={() => {
+                      startTransition(() => {
+                        void declineRivalChallengeAction(c.id).then(() =>
+                          router.refresh()
+                        );
+                      });
+                    }}
+                  >
+                    Decline
+                  </Button>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {unreadCount > 0 && (
+        <div className="space-y-2">
+          <p className="text-xs font-bold uppercase tracking-wide text-white/45">
+            Notifications
+          </p>
+          {data.notifications
+            .filter((n) => !n.read)
+            .slice(0, 5)
+            .map((n) => (
+              <button
+                key={n.id}
+                type="button"
+                onClick={() => {
+                  startTransition(() => {
+                    void markNotificationReadAction(n.id).then(() => router.refresh());
+                  });
+                }}
+                className="w-full rounded-xl bg-[#0066FF]/15 px-4 py-3 text-left ring-1 ring-[#0066FF]/25"
+              >
+                <p className="text-sm font-bold text-white">{n.title}</p>
+                <p className="text-xs text-white/60">{n.body}</p>
+              </button>
+            ))}
+        </div>
+      )}
+
       <div className="space-y-3">
-        {MOCK_POWERS.map((power) => (
+        {data.powers.map((power) => (
           <PowerCardItem
-            key={power.id}
+            key={power.type}
             power={power}
-            onTap={() => {
-              setSelected(power);
-              setSheetOpen(true);
-            }}
+            onTap={() => handlePowerTap(power)}
           />
         ))}
       </div>
 
-      {usedHistory.length > 0 && (
+      {data.history.length > 0 && (
         <div>
           <p className="mb-3 text-xs font-bold uppercase tracking-wide text-white/45">
             Power History
           </p>
           <div className="space-y-2">
-            {usedHistory.map((power) => (
+            {data.history.map((entry) => (
               <div
-                key={power.id}
-                className="rounded-xl bg-white/5 px-4 py-3"
+                key={`${entry.powerType}-${entry.settledAt}`}
+                className="rounded-2xl bg-white/95 p-4 shadow-lg ring-1 ring-black/5"
               >
-                <p className="font-bold text-white">{power.name}</p>
-                {power.history?.target && (
-                  <p className="text-sm text-white/60">
-                    Used on {power.history.target}
-                  </p>
-                )}
-                {power.history?.matchday && (
-                  <p className="text-xs text-white/40">
-                    Matchday {power.history.matchday}
-                  </p>
-                )}
-                {power.history?.bonus && (
-                  <p className="mt-1 text-sm font-bold text-[#00C853]">
-                    {power.history.bonus}
-                  </p>
-                )}
+                <div className="flex items-start gap-3">
+                  <span className="text-xl">{entry.icon}</span>
+                  <div className="min-w-0 flex-1">
+                    <p className="font-bold text-[#081120]">{entry.name}</p>
+                    {entry.matchday != null && (
+                      <p className="text-xs text-[#081120]/50">
+                        Matchday {entry.matchday}
+                      </p>
+                    )}
+                    {entry.targetLabel && (
+                      <p className="text-sm text-[#081120]/65">
+                        Target: {entry.targetLabel}
+                      </p>
+                    )}
+                    {entry.resultLabel && (
+                      <p className="mt-1 text-xs text-[#081120]/50">{entry.resultLabel}</p>
+                    )}
+                    {entry.pointsEffect != null && (
+                      <p className="mt-1 text-sm font-black text-[#00C853]">
+                        {entry.pointsEffect >= 0 ? "+" : ""}
+                        {entry.pointsEffect} pts
+                      </p>
+                    )}
+                  </div>
+                </div>
               </div>
             ))}
           </div>
         </div>
       )}
 
-      <BottomSheet
+      <PowerActivateSheet
+        power={selected}
+        data={data}
         open={sheetOpen}
         onClose={() => setSheetOpen(false)}
-        title={selected?.name}
-      >
-        {selected && (
-          <div className="space-y-4">
-            <div className="flex justify-center">
-              <span className="flex h-20 w-20 items-center justify-center rounded-3xl bg-gradient-to-br from-[#0066FF]/15 to-[#00C853]/15 text-4xl">
-                {selected.icon}
-              </span>
-            </div>
-            <p className="text-center text-sm leading-relaxed text-[#081120]/65">
-              {selected.description}
-            </p>
-            <span
-              className={cn(
-                "mx-auto block w-fit rounded-full px-3 py-1 text-xs font-bold uppercase",
-                STATUS_STYLES[selected.status].badge
-              )}
-            >
-              {STATUS_STYLES[selected.status].label}
-            </span>
-            {selected.status === "available" ? (
-              <>
-                <p className="text-center text-xs text-[#081120]/45">
-                  Select a target player or matchday to activate
-                </p>
-                <Button className="h-14 w-full text-base" onClick={() => setSheetOpen(false)}>
-                  Activate {selected.name}
-                </Button>
-              </>
-            ) : (
-              <Button
-                variant="outline"
-                className="w-full border-[#081120]/15 text-[#081120]"
-                onClick={() => setSheetOpen(false)}
-              >
-                Close
-              </Button>
-            )}
-          </div>
-        )}
-      </BottomSheet>
+      />
     </div>
   );
 }

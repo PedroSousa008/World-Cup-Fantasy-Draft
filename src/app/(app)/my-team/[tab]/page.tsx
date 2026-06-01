@@ -4,6 +4,7 @@ import { MyTeamShell } from "@/components/my-team/my-team-shell";
 import { MY_TEAM_TABS } from "@/lib/navigation";
 import { getRankingsData } from "@/lib/rankings/get-rankings-data";
 import { getDraftData } from "@/lib/draft/get-draft-data";
+import { getPowersData } from "@/lib/powers/get-powers-data";
 
 interface PageProps {
   params: Promise<{ tab: string }>;
@@ -22,6 +23,8 @@ export default async function MyTeamTabPage({ params }: PageProps) {
 
   const draftData = tab === "draft" ? await getDraftData(user.id) : undefined;
 
+  const powersData = tab === "powers" ? await getPowersData(user.id) : undefined;
+
   return (
     <MyTeamShell
       activeTab={tab}
@@ -32,6 +35,7 @@ export default async function MyTeamTabPage({ params }: PageProps) {
       }}
       rankingsData={rankingsData}
       draftData={draftData}
+      powersData={powersData}
     />
   );
 }

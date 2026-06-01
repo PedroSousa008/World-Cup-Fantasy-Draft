@@ -4,6 +4,8 @@ import {
   computePlayerStats,
   type MatchEventWithMatch,
 } from "@/lib/scoring/compute-player-stats";
+import { syncPowerStatuses } from "@/lib/powers/settle-powers";
+import { computeUserMatchdayPointsWithPowers } from "@/lib/powers/scoring-context";
 import { MATCHDAY_COUNT, MIN_LEAGUE_TABLE_ROWS } from "@/lib/scoring/constants";
 import type { PlayerRankingRow, RankingsData, TeamRankingRow } from "@/lib/rankings/types";
 
@@ -40,6 +42,8 @@ function buildLeagueTable(
 }
 
 export async function getRankingsData(currentUserTeamName: string): Promise<RankingsData> {
+  await syncPowerStatuses();
+
   const matchdays = Array.from({ length: MATCHDAY_COUNT }, (_, i) => i + 1);
 
   const [users, fantasyTeams, players, events, scoringRules, recentMatch] =
@@ -120,39 +124,48 @@ export async function getRankingsData(currentUserTeamName: string): Promise<Rank
     );
   }
 
-  const fantasyTeamByUserId = new Map(fantasyTeams.map((ft) => [ft.userId, ft]));
+  const matchdayPointsCache = new Map<string, number>();
 
-  function userPointsForMatchday(userId: string, matchday?: number): number {
-    const team = fantasyTeamByUserId.get(userId);
-    if (!team || team.players.length === 0) return 0;
-
-    return team.players.reduce((sum, slot) => {
-      const stats = playerStatsMap.get(slot.playerId);
-      if (!stats) return sum;
-      if (matchday != null) {
-        return sum + (stats.matchdayPoints[matchday] ?? 0);
+  async function userPointsForMatchday(userId: string, matchday?: number): Promise<number> {
+    if (matchday != null) {
+      const key = `${userId}:${matchday}`;
+      if (!matchdayPointsCache.has(key)) {
+        matchdayPointsCache.set(
+          key,
+          await computeUserMatchdayPointsWithPowers(userId, matchday)
+        );
       }
-      return sum + stats.totalPoints;
-    }, 0);
+      return matchdayPointsCache.get(key) ?? 0;
+    }
+
+    let total = 0;
+    for (const md of matchdays) {
+      total += await userPointsForMatchday(userId, md);
+    }
+    return total;
   }
 
-  const overallEntries = users.map((user) => ({
-    userId: user.id,
-    teamName: user.teamName,
-    nation: user.selectedNation,
-    points: userPointsForMatchday(user.id),
-  }));
+  const overallEntries = await Promise.all(
+    users.map(async (user) => ({
+      userId: user.id,
+      teamName: user.teamName,
+      nation: user.selectedNation,
+      points: await userPointsForMatchday(user.id),
+    }))
+  );
 
   const overall = buildLeagueTable(overallEntries, MIN_LEAGUE_TABLE_ROWS);
 
   const matchdayRankings: Record<number, TeamRankingRow[]> = {};
   for (const md of matchdays) {
-    const mdEntries = users.map((user) => ({
-      userId: user.id,
-      teamName: user.teamName,
-      nation: user.selectedNation,
-      points: userPointsForMatchday(user.id, md),
-    }));
+    const mdEntries = await Promise.all(
+      users.map(async (user) => ({
+        userId: user.id,
+        teamName: user.teamName,
+        nation: user.selectedNation,
+        points: await userPointsForMatchday(user.id, md),
+      }))
+    );
     matchdayRankings[md] = buildLeagueTable(mdEntries, MIN_LEAGUE_TABLE_ROWS);
   }
 

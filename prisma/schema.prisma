@@ -84,6 +84,31 @@ enum CompletionStatus {
   COMPLETED
 }
 
+enum PowerType {
+  DOUBLE_POINTS
+  TRIPLE_CAPTAIN
+  RIVAL_CHALLENGE
+  LUCKY_DIP
+  WILDCARD
+  CURSE
+}
+
+enum PowerStatus {
+  PENDING
+  ACTIVE
+  USED
+  EXPIRED
+}
+
+enum RivalChallengeStatus {
+  AWAITING_ACCEPTANCE
+  PENDING
+  ACTIVE
+  USED
+  DECLINED
+  EXPIRED
+}
+
 // ─── Platform & Auth ─────────────────────────────────────────────────────────
 
 /// Singleton platform configuration. Only one row should ever exist.
@@ -123,7 +148,11 @@ model User {
   predictions     Prediction[]
   fantasyTeam     FantasyTeam?
   calendarEvents  CalendarEvent[] @relation("EventCreator")
-  savedPlayers    SavedPlayer[]
+  savedPlayers       SavedPlayer[]
+  powerUsages        UserPower[]
+  powerNotifications PowerNotification[]
+  rivalChallengesSent     RivalChallenge[] @relation("RivalChallenger")
+  rivalChallengesReceived RivalChallenge[] @relation("RivalOpponent")
 }
 
 model Account {
@@ -368,4 +397,75 @@ model CalendarEvent {
   updatedAt   DateTime          @updatedAt
 
   @@index([startsAt])
+}
+
+// ─── Powers ────────────────────────────────────────────────────────────────────
+
+model UserPower {
+  id              String      @id @default(cuid())
+  userId          String
+  user            User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  powerType       PowerType
+  status          PowerStatus
+  matchday        Int?
+  targetPlayerId  String?
+  targetUserId    String?
+  rivalChallengeId String?    @unique
+  rivalChallenge  RivalChallenge? @relation(fields: [rivalChallengeId], references: [id])
+  pointsEffect    Int?
+  resultSummary   String?
+  activatedAt     DateTime    @default(now())
+  settledAt       DateTime?
+  updatedAt       DateTime    @updatedAt
+
+  wildcardTransfers WildcardTransfer[]
+
+  @@unique([userId, powerType])
+  @@index([userId, status])
+  @@index([matchday])
+}
+
+model RivalChallenge {
+  id                    String               @id @default(cuid())
+  challengerId          String
+  challenger            User                 @relation("RivalChallenger", fields: [challengerId], references: [id], onDelete: Cascade)
+  opponentId            String
+  opponent              User                 @relation("RivalOpponent", fields: [opponentId], references: [id], onDelete: Cascade)
+  matchday              Int
+  status                RivalChallengeStatus @default(AWAITING_ACCEPTANCE)
+  challengerMdPoints    Int?
+  opponentMdPoints      Int?
+  challengerFinalPoints Int?
+  opponentFinalPoints   Int?
+  winnerId              String?
+  createdAt             DateTime             @default(now())
+  updatedAt             DateTime             @updatedAt
+
+  userPowers UserPower[]
+
+  @@index([opponentId, status])
+  @@index([challengerId])
+}
+
+model PowerNotification {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      String
+  title     String
+  body      String
+  read      Boolean  @default(false)
+  metadata  String?
+  createdAt DateTime @default(now())
+
+  @@index([userId, read])
+}
+
+model WildcardTransfer {
+  id          String    @id @default(cuid())
+  userPowerId String
+  userPower   UserPower @relation(fields: [userPowerId], references: [id], onDelete: Cascade)
+  playerOutId String?
+  playerInId  String
+  createdAt   DateTime  @default(now())
 }
