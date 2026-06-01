@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import Image from "next/image";
 import { cn } from "@/lib/utils";
 import { BallMark } from "@/components/design/ball-mark";
 import { useBranding } from "@/contexts/branding-context";
@@ -17,12 +16,22 @@ interface AppLogoProps {
 }
 
 const markSizes = {
-  sm: { class: "h-9 w-9", px: 36 },
-  md: { class: "h-11 w-11", px: 44 },
-  lg: { class: "h-16 w-16", px: 64 },
-  xl: { class: "h-28 w-28", px: 112 },
-  hero: { class: "h-40 w-40 sm:h-48 sm:w-48", px: 192 },
+  sm: "h-9 w-9",
+  md: "h-11 w-11",
+  lg: "h-16 w-16",
+  xl: "h-28 w-28",
+  hero: "h-40 w-40 sm:h-48 sm:w-48",
 };
+
+function resolveSrc(
+  branding: { logoSrc: string | null; iconSrc: string | null },
+  variant: "logo" | "icon"
+) {
+  if (variant === "icon") {
+    return branding.iconSrc ?? APP_LOGO_PATH;
+  }
+  return branding.logoSrc ?? APP_LOGO_PATH;
+}
 
 function LogoImage({
   src,
@@ -37,16 +46,14 @@ function LogoImage({
   priority?: boolean;
   onError?: () => void;
 }) {
-  const { class: sizeClass, px } = markSizes[size];
-
   return (
-    <div className={cn("relative shrink-0", sizeClass)}>
-      <Image
+    <div className={cn("relative shrink-0", markSizes[size])}>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
         src={src}
         alt={alt}
-        width={px}
-        height={px}
-        priority={priority}
+        decoding="async"
+        fetchPriority={priority ? "high" : "auto"}
         className="h-full w-full object-contain"
         onError={onError}
       />
@@ -55,7 +62,7 @@ function LogoImage({
 }
 
 export function AppLogo({
-  showName = true,
+  showName = false,
   size = "md",
   className,
   nameClassName,
@@ -64,19 +71,11 @@ export function AppLogo({
 }: AppLogoProps) {
   const branding = useBranding();
   const [imgFailed, setImgFailed] = useState(false);
-
-  const src =
-    variant === "icon"
-      ? branding.iconSrc ?? branding.logoSrc
-      : branding.logoSrc ?? branding.iconSrc;
-
-  const showPlaceholder = !src || imgFailed;
-  // Full logo already contains the app name — hide redundant text
-  const displayName = showName && !branding.logoSrc;
+  const src = resolveSrc(branding, variant);
 
   return (
     <div className={cn("flex min-w-0 items-center gap-2.5", className)}>
-      {showPlaceholder ? (
+      {imgFailed ? (
         <BallMark size={size === "hero" || size === "xl" ? "lg" : size === "lg" ? "lg" : size} />
       ) : (
         <LogoImage
@@ -87,7 +86,7 @@ export function AppLogo({
           onError={() => setImgFailed(true)}
         />
       )}
-      {displayName && (
+      {showName && (
         <span
           className={cn(
             "truncate text-display text-base font-bold tracking-tight text-white sm:text-lg",
@@ -103,7 +102,7 @@ export function AppLogo({
 
 export function AppLogoStatic({
   branding,
-  showName = true,
+  showName = false,
   size = "md",
   className,
   nameClassName,
@@ -117,21 +116,12 @@ export function AppLogoStatic({
     iconSrc: string | null;
   };
 }) {
-  const src =
-    variant === "icon"
-      ? branding.iconSrc ?? branding.logoSrc
-      : branding.logoSrc ?? branding.iconSrc;
-
-  const displayName = showName && !branding.logoSrc;
+  const src = resolveSrc(branding, variant);
 
   return (
     <div className={cn("flex min-w-0 items-center gap-2.5", className)}>
-      {src ? (
-        <LogoImage src={src} alt={branding.appName} size={size} priority={priority} />
-      ) : (
-        <BallMark size={size === "hero" || size === "xl" ? "lg" : size === "lg" ? "lg" : size} />
-      )}
-      {displayName && (
+      <LogoImage src={src} alt={branding.appName} size={size} priority={priority} />
+      {showName && (
         <span
           className={cn(
             "truncate text-display text-base font-bold tracking-tight text-white sm:text-lg",
@@ -145,5 +135,4 @@ export function AppLogoStatic({
   );
 }
 
-/** Direct path fallback for cases that don't need server branding check */
 export { APP_LOGO_PATH };

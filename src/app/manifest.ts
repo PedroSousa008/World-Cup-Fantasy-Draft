@@ -1,24 +1,28 @@
 import type { MetadataRoute } from "next";
-import { getBranding } from "@/lib/branding/get-branding";
+import { APP_LOGO_PATH, APP_NAME, APP_SHORT_NAME } from "@/lib/branding/assets";
 
-export default async function manifest(): Promise<MetadataRoute.Manifest> {
-  const branding = await getBranding();
-
-  const icons = branding.iconSrc
-    ? [
-        { src: branding.iconSrc, sizes: "512x512", type: "image/png", purpose: "any" as const },
-        { src: branding.iconSrc, sizes: "512x512", type: "image/png", purpose: "maskable" as const },
-      ]
-    : [{ src: "/favicon.svg", sizes: "any", type: "image/svg+xml", purpose: "any" as const }];
-
+export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: branding.appName,
-    short_name: branding.appShortName,
+    name: APP_NAME,
+    short_name: APP_SHORT_NAME,
     description: "Private World Cup fantasy competition",
     start_url: "/",
     display: "standalone",
     background_color: "#081120",
     theme_color: "#081120",
-    icons,
+    icons: [
+      {
+        src: APP_LOGO_PATH,
+        sizes: "512x512",
+        type: "image/png",
+        purpose: "any",
+      },
+      {
+        src: APP_LOGO_PATH,
+        sizes: "512x512",
+        type: "image/png",
+        purpose: "maskable",
+      },
+    ],
   };
 }

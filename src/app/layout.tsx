@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { SessionProvider } from "next-auth/react";
 import { BrandingProvider } from "@/contexts/branding-context";
 import { getBranding } from "@/lib/branding/get-branding";
+import { APP_LOGO_PATH } from "@/lib/branding/assets";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -20,9 +21,10 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     title: branding.appName,
     description: "Private World Cup fantasy competition for friends",
-    icons: branding.iconSrc
-      ? { icon: branding.iconSrc, apple: branding.iconSrc }
-      : { icon: "/favicon.svg" },
+    icons: {
+      icon: APP_LOGO_PATH,
+      apple: APP_LOGO_PATH,
+    },
     appleWebApp: {
       title: branding.appShortName,
     },

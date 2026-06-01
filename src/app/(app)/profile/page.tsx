@@ -4,7 +4,7 @@ import { Card, EmptyState } from "@/components/ui/card";
 import { PageHeader } from "@/components/layout/section-page";
 import { AppLogoStatic } from "@/components/branding/app-logo";
 import { UserRole } from "@prisma/client";
-import { Trophy, Target, TrendingUp, User } from "lucide-react";
+import { Trophy, Target, TrendingUp } from "lucide-react";
 
 export default async function ProfilePage() {
   const session = await auth();
@@ -19,11 +19,7 @@ export default async function ProfilePage() {
         <div className="relative flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-4">
             <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-white p-1 shadow-lg">
-              {branding.logoSrc ? (
-                <AppLogoStatic branding={branding} showName={false} size="lg" variant="logo" />
-              ) : (
-                <User className="h-8 w-8 text-[#0066FF]" />
-              )}
+              <AppLogoStatic branding={branding} showName={false} size="lg" variant="logo" />
             </div>
             <div>
               <h1 className="text-display text-2xl">{user.teamName}</h1>
