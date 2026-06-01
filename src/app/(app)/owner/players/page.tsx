@@ -2,10 +2,12 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { UserRole } from "@prisma/client";
-import { NationsGrid } from "@/components/owner/nations-grid";
+import { OwnerPlayersPanel } from "@/components/owner/owner-players-panel";
 import { PageHeader } from "@/components/layout/section-page";
-import { getNationsListData } from "@/lib/owner/get-nations-data";
+import { getOwnerPlayersPageData } from "@/lib/owner/get-nations-data";
 import { ArrowLeft } from "lucide-react";
+
+export const dynamic = "force-dynamic";
 
 export default async function OwnerPlayersPage() {
   const session = await auth();
@@ -13,7 +15,7 @@ export default async function OwnerPlayersPage() {
     redirect("/my-team");
   }
 
-  const nations = await getNationsListData();
+  const { nations, error, needsSetup } = await getOwnerPlayersPageData();
 
   return (
     <div className="space-y-6 overflow-x-hidden">
@@ -27,10 +29,10 @@ export default async function OwnerPlayersPage() {
 
       <PageHeader
         title="Nations & Players"
-        description="48 World Cup nations. Add players team by team — no fake data."
+        description="Manage nations, upload player images, create players, and assign squads."
       />
 
-      <NationsGrid nations={nations} />
+      <OwnerPlayersPanel nations={nations} error={error} needsSetup={needsSetup} />
     </div>
   );
 }

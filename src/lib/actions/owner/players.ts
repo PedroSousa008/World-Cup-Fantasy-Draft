@@ -9,6 +9,7 @@ import { buildPlayerPhotoPath } from "@/lib/players/photo";
 import { isValidPlayerPosition } from "@/lib/players/types";
 import type { OwnerActionResult } from "@/lib/actions/owner/helpers";
 import { requireOwnerSession } from "@/lib/actions/owner/helpers";
+import { ensureNationSchema } from "@/lib/db/ensure-nation-schema";
 
 function revalidatePlayerPaths() {
   revalidatePath("/my-team/draft");
@@ -24,6 +25,9 @@ export async function createPlayerAction(input: {
 }): Promise<OwnerActionResult<{ playerId: string }>> {
   const owner = await requireOwnerSession();
   if (!owner) return { ok: false, error: "Owner access required." };
+
+  const schema = await ensureNationSchema();
+  if (!schema.ok) return { ok: false, error: schema.error };
 
   const name = input.name.trim();
   if (!name) return { ok: false, error: "Player name is required." };

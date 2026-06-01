@@ -36,9 +36,7 @@ export function NationsGrid({ nations }: NationsGridProps) {
 
       {nations.length === 0 ? (
         <p className="rounded-2xl bg-white/95 p-6 text-center text-sm text-[#081120]/50">
-          No nations in database. Run{" "}
-          <code className="rounded bg-[#081120]/5 px-1">npm run nations:setup</code> or tap
-          Sync nations.
+          No nations in database. Use &quot;Add nations&quot; on the page above.
         </p>
       ) : (
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
