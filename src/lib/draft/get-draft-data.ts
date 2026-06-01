@@ -1,0 +1,58 @@
+import { prisma } from "@/lib/db/prisma";
+import type { DraftData, DraftPlayerCard } from "@/lib/draft/types";
+import type { PlayerPosition } from "@/lib/mock/my-team-data";
+import { loadAllPlayerStats } from "@/lib/scoring/load-all-player-stats";
+
+export async function getDraftData(userId: string): Promise<DraftData> {
+  const [players, saved, statsMap] = await Promise.all([
+    prisma.player.findMany({
+      orderBy: [{ nationality: "asc" }, { name: "asc" }],
+      include: {
+        fantasySlots: {
+          take: 1,
+          include: {
+            fantasyTeam: {
+              include: {
+                user: { select: { teamName: true, selectedNation: true } },
+              },
+            },
+          },
+        },
+      },
+    }),
+    prisma.savedPlayer.findMany({
+      where: { userId },
+      select: { playerId: true },
+    }),
+    loadAllPlayerStats(),
+  ]);
+
+  const draftPlayers: DraftPlayerCard[] = players.map((player) => {
+    const owner = player.fantasySlots[0]?.fantasyTeam.user ?? null;
+    const stats = statsMap.get(player.id);
+
+    return {
+      id: player.id,
+      name: player.name,
+      photoUrl: player.photoUrl,
+      position: player.position as PlayerPosition,
+      nation: player.nationality,
+      totalPoints: stats?.totalPoints ?? 0,
+      ownerTeamName: owner?.teamName ?? null,
+      ownerSelectedNation: owner?.selectedNation ?? null,
+      isAssigned: player.fantasySlots.length > 0,
+    };
+  });
+
+  return {
+    players: draftPlayers,
+    savedPlayerIds: saved.map((s) => s.playerId),
+  };
+}
+
+export async function isPlayerSaved(userId: string, playerId: string): Promise<boolean> {
+  const row = await prisma.savedPlayer.findUnique({
+    where: { userId_playerId: { userId, playerId } },
+  });
+  return !!row;
+}

@@ -123,6 +123,7 @@ model User {
   predictions     Prediction[]
   fantasyTeam     FantasyTeam?
   calendarEvents  CalendarEvent[] @relation("EventCreator")
+  savedPlayers    SavedPlayer[]
 }
 
 model Account {
@@ -193,6 +194,7 @@ model Player {
 
   fantasySlots FantasyTeamPlayer[]
   matchEvents  MatchEvent[]
+  savedBy      SavedPlayer[]
 }
 
 model Match {
@@ -261,6 +263,20 @@ model FantasyTeamPlayer {
   createdAt     DateTime    @default(now())
 
   @@unique([fantasyTeamId, playerId])
+}
+
+// ─── Saved Players (user shortlist) ──────────────────────────────────────────
+
+model SavedPlayer {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  playerId  String
+  player    Player   @relation(fields: [playerId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, playerId])
+  @@index([userId])
 }
 
 // ─── Predictions ─────────────────────────────────────────────────────────────
