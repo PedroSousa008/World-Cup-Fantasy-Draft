@@ -22,7 +22,8 @@
     "players:south-korea": "tsx scripts/register-south-korea-batch.ts",
     "players:czech-republic": "tsx scripts/register-czech-republic-batch.ts",
     "players:england": "tsx scripts/register-england-batch.ts",
-    "players:argentina": "tsx scripts/register-argentina-batch.ts"
+    "players:argentina": "tsx scripts/register-argentina-batch.ts",
+    "players:france": "tsx scripts/register-france-batch.ts"
   },
   "prisma": {
     "seed": "npx tsx prisma/seed.ts"
