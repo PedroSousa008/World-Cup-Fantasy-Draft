@@ -4,9 +4,15 @@ import {
   KNOCKOUT_MATCHES,
   KNOCKOUT_SLOTS,
   isManualSlot,
+  isR32Match,
   type KnockoutMatchDef,
 } from "@/lib/tournament/knockout/topology";
-import { syncProgressionFromBracket } from "@/lib/tournament/knockout/progression-sync";
+import {
+  buildMatchResultsFromDb,
+  deriveBracketMatches,
+  derivedToBracketMatches,
+} from "@/lib/tournament/knockout/derive-bracket-state";
+import { syncProgressionFromDerived } from "@/lib/tournament/knockout/progression-sync";
 
 export interface BracketNation {
   id: string;
@@ -35,10 +41,16 @@ export interface BracketMatchState {
   matchId: string | null;
   homeTeamId: string | null;
   awayTeamId: string | null;
+  homeNation: BracketNation | null;
+  awayNation: BracketNation | null;
+  homeWaiting: boolean;
+  awayWaiting: boolean;
   homeScore: number | null;
   awayScore: number | null;
   status: string;
   winnerId: string | null;
+  feederHomeMatchKey?: string;
+  feederAwayMatchKey?: string;
 }
 
 export interface KnockoutBracketData {
@@ -110,56 +122,34 @@ function buildBracketPayload(
   }[],
   nations: BracketNation[]
 ): KnockoutBracketData {
-  const matchByKey = new Map(
-    matchRows.filter((m) => m.knockoutMatchKey).map((m) => [m.knockoutMatchKey!, m])
-  );
-
   const slots: BracketSlotState[] = slotRows.map((row) => ({
     slotKey: row.slotKey,
     round: row.round,
     side: row.side,
-    nationalTeamId: row.nationalTeamId,
-    nation: row.nationalTeam
-      ? {
-          id: row.nationalTeam.id,
-          name: row.nationalTeam.name,
-          flagEmoji: row.nationalTeam.flagEmoji,
-          code: row.nationalTeam.code,
-        }
-      : null,
+    nationalTeamId: isManualSlot(row.slotKey) ? row.nationalTeamId : null,
+    nation:
+      isManualSlot(row.slotKey) && row.nationalTeam
+        ? {
+            id: row.nationalTeam.id,
+            name: row.nationalTeam.name,
+            flagEmoji: row.nationalTeam.flagEmoji,
+            code: row.nationalTeam.code,
+          }
+        : null,
     eliminated: row.eliminated,
   }));
 
-  const slotByKey = new Map(slots.map((s) => [s.slotKey, s]));
+  const r32Inputs = slots
+    .filter((s) => isManualSlot(s.slotKey))
+    .map((s) => ({
+      slotKey: s.slotKey,
+      nationalTeamId: s.nationalTeamId,
+      nation: s.nation,
+    }));
 
-  const matches: BracketMatchState[] = KNOCKOUT_MATCHES.map((def) => {
-    const m = matchByKey.get(def.key);
-    const homeId = slotByKey.get(def.homeSlot)?.nationalTeamId ?? null;
-    const awayId = slotByKey.get(def.awaySlot)?.nationalTeamId ?? null;
-    let winnerId: string | null = null;
-    if (m?.knockoutWinnerId) winnerId = m.knockoutWinnerId;
-    else if (m?.status === "FINISHED" && m.homeScore != null && m.awayScore != null) {
-      if (m.homeScore > m.awayScore) winnerId = m.homeTeamId;
-      else if (m.awayScore > m.homeScore) winnerId = m.awayTeamId;
-    }
-
-    return {
-      matchKey: def.key,
-      round: def.round,
-      matchday: def.matchday,
-      side: def.side,
-      homeSlot: def.homeSlot,
-      awaySlot: def.awaySlot,
-      winnerSlot: def.winnerSlot,
-      matchId: m?.id ?? null,
-      homeTeamId: homeId,
-      awayTeamId: awayId,
-      homeScore: m?.homeScore ?? null,
-      awayScore: m?.awayScore ?? null,
-      status: m?.status ?? "SCHEDULED",
-      winnerId,
-    };
-  });
+  const matchInputs = buildMatchResultsFromDb(r32Inputs, matchRows);
+  const derived = deriveBracketMatches(r32Inputs, matchInputs, nations);
+  const matches = derivedToBracketMatches(derived);
 
   return { slots, matches, nations };
 }
@@ -202,26 +192,6 @@ export async function getKnockoutBracketData(
   ]);
 
   return buildBracketPayload(slotRows, matchRows, nations);
-}
-
-function resolveMatchWinner(
-  m: {
-    knockoutWinnerId: string | null;
-    homeTeamId: string;
-    awayTeamId: string;
-    homeScore: number | null;
-    awayScore: number | null;
-    status: MatchStatus;
-  } | undefined,
-  homeId: string,
-  awayId: string
-): string | null {
-  if (!m) return null;
-  if (m.knockoutWinnerId) return m.knockoutWinnerId;
-  if (m.status !== "FINISHED" || m.homeScore == null || m.awayScore == null) return null;
-  if (m.homeScore > m.awayScore) return homeId;
-  if (m.awayScore > m.homeScore) return awayId;
-  return null;
 }
 
 /** Remove knockout match when bracket pairing is incomplete. */
@@ -282,15 +252,13 @@ export async function recomputeKnockoutBracket(): Promise<void> {
   await ensureKnockoutSlotsInitialized();
 
   const [slotRows, matchRows] = await Promise.all([
-    prisma.knockoutSlot.findMany(),
+    prisma.knockoutSlot.findMany({ include: { nationalTeam: true } }),
     prisma.match.findMany({
       where: { knockoutMatchKey: { not: null } },
       select: {
         id: true,
         knockoutMatchKey: true,
         knockoutWinnerId: true,
-        homeTeamId: true,
-        awayTeamId: true,
         homeScore: true,
         awayScore: true,
         status: true,
@@ -298,103 +266,101 @@ export async function recomputeKnockoutBracket(): Promise<void> {
     }),
   ]);
 
-  const slotMap = new Map(slotRows.map((s) => [s.slotKey, { ...s }]));
-  const matchMap = new Map(
-    matchRows
-      .filter((m) => m.knockoutMatchKey)
-      .map((m) => [m.knockoutMatchKey!, m])
+  const r32Inputs = slotRows
+    .filter((s) => isManualSlot(s.slotKey))
+    .map((s) => ({
+      slotKey: s.slotKey,
+      nationalTeamId: s.nationalTeamId,
+      nation: s.nationalTeam
+        ? {
+            id: s.nationalTeam.id,
+            name: s.nationalTeam.name,
+            flagEmoji: s.nationalTeam.flagEmoji,
+            code: s.nationalTeam.code,
+          }
+        : null,
+    }));
+
+  const matchInputs = buildMatchResultsFromDb(r32Inputs, matchRows);
+  const allNations = slotRows
+    .filter((s) => s.nationalTeam)
+    .map((s) => ({
+      id: s.nationalTeam!.id,
+      name: s.nationalTeam!.name,
+      flagEmoji: s.nationalTeam!.flagEmoji,
+      code: s.nationalTeam!.code,
+    }));
+  const derived = deriveBracketMatches(r32Inputs, matchInputs, allNations);
+  const matchByKey = new Map(
+    matchRows.filter((m) => m.knockoutMatchKey).map((m) => [m.knockoutMatchKey!, m])
   );
 
-  for (const def of KNOCKOUT_SLOTS) {
-    if (!isManualSlot(def.key)) {
-      const slot = slotMap.get(def.key);
-      if (slot) {
-        slot.nationalTeamId = null;
-        slot.eliminated = false;
-      }
+  const matchClears: string[] = [];
+  const matchWinnerSets: { id: string; knockoutWinnerId: string }[] = [];
+
+  for (const d of derived) {
+    await syncKnockoutMatchRecord(
+      d.def,
+      d.home.nationalTeamId,
+      d.away.nationalTeamId
+    );
+
+    const m = matchByKey.get(d.def.key);
+    if (m?.knockoutWinnerId && !d.winnerId) {
+      matchClears.push(m.id);
+    } else if (m && d.winnerId && !m.knockoutWinnerId) {
+      matchWinnerSets.push({ id: m.id, knockoutWinnerId: d.winnerId });
     }
   }
 
-  const matchUpdates: { id: string; knockoutWinnerId: string }[] = [];
-  const slotUpdates: { slotKey: string; nationalTeamId: string | null; eliminated: boolean }[] =
-    [];
-
-  for (const matchDef of KNOCKOUT_MATCHES) {
-    const homeSlot = slotMap.get(matchDef.homeSlot);
-    const awaySlot = slotMap.get(matchDef.awaySlot);
-    const homeId = homeSlot?.nationalTeamId ?? null;
-    const awayId = awaySlot?.nationalTeamId ?? null;
-
-    await syncKnockoutMatchRecord(matchDef, homeId, awayId);
-
+  const slotEliminated = new Map<string, boolean>();
+  for (const s of slotRows) {
+    if (isManualSlot(s.slotKey)) slotEliminated.set(s.slotKey, false);
+  }
+  for (const d of derived) {
+    if (!isR32Match(d.def) || !d.winnerId) continue;
+    const homeId = d.home.nationalTeamId;
+    const awayId = d.away.nationalTeamId;
     if (!homeId || !awayId) continue;
-
-    let m = matchMap.get(matchDef.key);
-    if (!m) {
-      const found = await prisma.match.findUnique({
-        where: { knockoutMatchKey: matchDef.key },
-        select: {
-          id: true,
-          knockoutMatchKey: true,
-          knockoutWinnerId: true,
-          homeTeamId: true,
-          awayTeamId: true,
-          homeScore: true,
-          awayScore: true,
-          status: true,
-        },
-      });
-      if (found) {
-        m = found;
-        matchMap.set(matchDef.key, found);
-      }
-    }
-
-    const winnerId = resolveMatchWinner(m ?? undefined, homeId, awayId);
-    if (!winnerId) continue;
-
-    const winnerSlot = slotMap.get(matchDef.winnerSlot);
-    if (winnerSlot) {
-      winnerSlot.nationalTeamId = winnerId;
-      winnerSlot.eliminated = false;
-    }
-
-    const loserId = winnerId === homeId ? awayId : homeId;
-    if (homeSlot) homeSlot.eliminated = loserId === homeId;
-    if (awaySlot) awaySlot.eliminated = loserId === awayId;
-
-    if (m && !m.knockoutWinnerId) {
-      matchUpdates.push({ id: m.id, knockoutWinnerId: winnerId });
-    }
-  }
-
-  for (const slot of slotMap.values()) {
-    slotUpdates.push({
-      slotKey: slot.slotKey,
-      nationalTeamId: slot.nationalTeamId,
-      eliminated: slot.eliminated,
-    });
+    const loserId = d.winnerId === homeId ? awayId : homeId;
+    if (loserId === homeId) slotEliminated.set(d.def.homeSlot, true);
+    if (loserId === awayId) slotEliminated.set(d.def.awaySlot, true);
   }
 
   await prisma.$transaction(async (tx) => {
-    for (const u of matchUpdates) {
+    for (const id of matchClears) {
+      await tx.match.update({
+        where: { id },
+        data: {
+          knockoutWinnerId: null,
+          status: MatchStatus.SCHEDULED,
+          homeScore: null,
+          awayScore: null,
+        },
+      });
+    }
+    for (const u of matchWinnerSets) {
       await tx.match.update({
         where: { id: u.id },
         data: { knockoutWinnerId: u.knockoutWinnerId },
       });
     }
-    for (const u of slotUpdates) {
-      await tx.knockoutSlot.update({
-        where: { slotKey: u.slotKey },
-        data: {
-          nationalTeamId: u.nationalTeamId,
-          eliminated: u.eliminated,
-        },
-      });
+    for (const slot of slotRows) {
+      if (isManualSlot(slot.slotKey)) {
+        await tx.knockoutSlot.update({
+          where: { slotKey: slot.slotKey },
+          data: { eliminated: slotEliminated.get(slot.slotKey) ?? false },
+        });
+      } else {
+        await tx.knockoutSlot.update({
+          where: { slotKey: slot.slotKey },
+          data: { nationalTeamId: null, eliminated: false },
+        });
+      }
     }
   });
 
-  await syncProgressionFromBracket();
+  await syncProgressionFromDerived(derived);
 }
 
 export async function assignTeamToKnockoutSlot(
@@ -435,11 +401,10 @@ export async function setKnockoutMatchWinner(
   const def = KNOCKOUT_MATCHES.find((m) => m.key === matchKey);
   if (!def) return { ok: false, error: "Unknown match." };
 
-  const homeSlot = await prisma.knockoutSlot.findUnique({ where: { slotKey: def.homeSlot } });
-  const awaySlot = await prisma.knockoutSlot.findUnique({ where: { slotKey: def.awaySlot } });
-
-  const homeId = homeSlot?.nationalTeamId;
-  const awayId = awaySlot?.nationalTeamId;
+  const bracket = await getKnockoutBracketData();
+  const bracketMatch = bracket.matches.find((m) => m.matchKey === matchKey);
+  const homeId = bracketMatch?.homeTeamId;
+  const awayId = bracketMatch?.awayTeamId;
   if (!homeId || !awayId) {
     return { ok: false, error: "Both teams must be set before selecting a winner." };
   }
@@ -447,8 +412,8 @@ export async function setKnockoutMatchWinner(
     return { ok: false, error: "Winner must be one of the match teams." };
   }
 
-  const match = await prisma.match.findUnique({ where: { knockoutMatchKey: matchKey } });
-  if (!match) {
+  const existing = await prisma.match.findUnique({ where: { knockoutMatchKey: matchKey } });
+  if (!existing) {
     await syncKnockoutMatchRecord(def, homeId, awayId);
   }
 

@@ -4,102 +4,96 @@ import type {
   BracketSlotState,
   KnockoutBracketData,
 } from "@/lib/tournament/knockout/bracket-service";
-import { KNOCKOUT_MATCHES, isManualSlot } from "@/lib/tournament/knockout/topology";
+import {
+  buildMatchResultsFromClient,
+  deriveBracketMatches,
+  derivedToBracketMatches,
+} from "@/lib/tournament/knockout/derive-bracket-state";
+import { KNOCKOUT_MATCHES, isManualSlot, isR32Match } from "@/lib/tournament/knockout/topology";
 
-/** Clear winner flags on matches downstream of a changed slot. */
-function clearWinnersDownstreamOfSlot(
+function r32InputsFromSlots(slots: BracketSlotState[]) {
+  return slots
+    .filter((s) => isManualSlot(s.slotKey))
+    .map((s) => ({
+      slotKey: s.slotKey,
+      nationalTeamId: s.nationalTeamId,
+      nation: s.nation,
+    }));
+}
+
+/** Clear winners on matches downstream of a feeder match (tree propagation). */
+function clearWinnersDownstreamOfMatch(
   matches: BracketMatchState[],
-  slotKey: string
+  sourceMatchKey: string
 ): BracketMatchState[] {
-  const slotsToInvalidate = new Set<string>([slotKey]);
-  const matchesToClear = new Set<string>();
+  const toClear = new Set<string>([sourceMatchKey]);
   let grew = true;
 
   while (grew) {
     grew = false;
     for (const def of KNOCKOUT_MATCHES) {
-      if (matchesToClear.has(def.key)) continue;
-      if (slotsToInvalidate.has(def.homeSlot) || slotsToInvalidate.has(def.awaySlot)) {
-        matchesToClear.add(def.key);
-        slotsToInvalidate.add(def.winnerSlot);
+      if (toClear.has(def.key)) continue;
+      if (
+        (def.feederHomeMatchKey && toClear.has(def.feederHomeMatchKey)) ||
+        (def.feederAwayMatchKey && toClear.has(def.feederAwayMatchKey))
+      ) {
+        toClear.add(def.key);
         grew = true;
       }
     }
   }
 
   return matches.map((m) =>
-    matchesToClear.has(m.matchKey) ? { ...m, winnerId: null, status: "SCHEDULED" } : m
+    toClear.has(m.matchKey)
+      ? {
+          ...m,
+          winnerId: null,
+          status: "SCHEDULED",
+          homeScore: null,
+          awayScore: null,
+        }
+      : m
   );
 }
 
-function nationForTeam(
-  slots: BracketSlotState[],
-  teamId: string
-): BracketNation | null {
-  const row = slots.find((s) => s.nationalTeamId === teamId);
-  return row?.nation ?? null;
+function clearWinnersDownstreamOfSlot(
+  matches: BracketMatchState[],
+  slotKey: string
+): BracketMatchState[] {
+  const def = KNOCKOUT_MATCHES.find((m) => m.homeSlot === slotKey || m.awaySlot === slotKey);
+  if (!def) return matches;
+  return clearWinnersDownstreamOfMatch(matches, def.key);
 }
 
 /**
- * Pure client-side bracket propagation (mirrors server recompute for UI).
+ * Pure client-side bracket derivation (mirrors server match-centric logic).
  */
 export function recomputeBracketDataState(data: KnockoutBracketData): KnockoutBracketData {
-  const slots: BracketSlotState[] = data.slots.map((s) => ({
+  const r32Inputs = r32InputsFromSlots(data.slots);
+  const matchInputs = buildMatchResultsFromClient(r32Inputs, data.matches);
+  const derived = deriveBracketMatches(r32Inputs, matchInputs, data.nations);
+  const matches = derivedToBracketMatches(derived);
+
+  const eliminatedBySlot = new Map<string, boolean>();
+  for (const s of data.slots) {
+    if (isManualSlot(s.slotKey)) eliminatedBySlot.set(s.slotKey, false);
+  }
+  for (const d of derived) {
+    if (!isR32Match(d.def) || !d.winnerId) continue;
+    const homeId = d.home.nationalTeamId;
+    const awayId = d.away.nationalTeamId;
+    if (!homeId || !awayId) continue;
+    const loserId = d.winnerId === homeId ? awayId : homeId;
+    if (loserId === homeId) eliminatedBySlot.set(d.def.homeSlot, true);
+    if (loserId === awayId) eliminatedBySlot.set(d.def.awaySlot, true);
+  }
+
+  const slots = data.slots.map((s) => ({
     ...s,
-    nation: s.nation ? { ...s.nation } : null,
+    nationalTeamId: isManualSlot(s.slotKey) ? s.nationalTeamId : null,
+    nation: isManualSlot(s.slotKey) ? s.nation : null,
+    eliminated: eliminatedBySlot.get(s.slotKey) ?? false,
   }));
-  const slotByKey = new Map(slots.map((s) => [s.slotKey, s]));
-  const matches: BracketMatchState[] = data.matches.map((m) => ({ ...m }));
-
-  for (const slot of slots) {
-    if (!isManualSlot(slot.slotKey)) {
-      slot.nationalTeamId = null;
-      slot.nation = null;
-      slot.eliminated = false;
-    }
-  }
-
-  for (const def of KNOCKOUT_MATCHES) {
-    const home = slotByKey.get(def.homeSlot);
-    const away = slotByKey.get(def.awaySlot);
-    const match = matches.find((m) => m.matchKey === def.key);
-    if (!match || !home || !away) continue;
-
-    const homeId = home.nationalTeamId;
-    const awayId = away.nationalTeamId;
-    match.homeTeamId = homeId;
-    match.awayTeamId = awayId;
-
-    if (!homeId || !awayId) {
-      match.winnerId = null;
-      home.eliminated = false;
-      away.eliminated = false;
-      continue;
-    }
-
-    let winnerId = match.winnerId;
-    if (winnerId && winnerId !== homeId && winnerId !== awayId) {
-      winnerId = null;
-      match.winnerId = null;
-    }
-
-    if (!winnerId) {
-      home.eliminated = false;
-      away.eliminated = false;
-      continue;
-    }
-
-    const winnerSlot = slotByKey.get(def.winnerSlot);
-    if (winnerSlot) {
-      winnerSlot.nationalTeamId = winnerId;
-      winnerSlot.nation = nationForTeam(slots, winnerId);
-      winnerSlot.eliminated = false;
-    }
-
-    const loserId = winnerId === homeId ? awayId : homeId;
-    home.eliminated = home.nationalTeamId === loserId;
-    away.eliminated = away.nationalTeamId === loserId;
-  }
 
   return { slots, matches, nations: data.nations };
 }

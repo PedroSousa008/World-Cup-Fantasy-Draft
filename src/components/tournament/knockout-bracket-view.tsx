@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { Trophy } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getNationFlag } from "@/lib/nations";
-import { getRoundLabel } from "@/lib/tournament/knockout/topology";
+import { getBracketTreeGroups, getRoundLabel } from "@/lib/tournament/knockout/topology";
 import type { KnockoutRound } from "@prisma/client";
 import type {
   BracketMatchState,
@@ -31,85 +31,51 @@ export function KnockoutBracketView({
     () => new Map(data.slots.map((s) => [s.slotKey, s])),
     [data.slots]
   );
-  const {
-    leftR32,
-    leftR16,
-    leftQF,
-    leftSF,
-    rightR32,
-    rightR16,
-    rightQF,
-    rightSF,
-    finalMatch,
-  } = useMemo(() => {
-    const leftR32: BracketMatchState[] = [];
-    const leftR16: BracketMatchState[] = [];
-    const leftQF: BracketMatchState[] = [];
-    const leftSF: BracketMatchState[] = [];
-    const rightR32: BracketMatchState[] = [];
-    const rightR16: BracketMatchState[] = [];
-    const rightQF: BracketMatchState[] = [];
-    const rightSF: BracketMatchState[] = [];
-    let finalMatch: BracketMatchState | undefined;
 
-    for (const m of data.matches) {
-      if (m.round === "FINAL") {
-        finalMatch = m;
-        continue;
-      }
-      if (m.side === "left") {
-        if (m.round === "ROUND_OF_32") leftR32.push(m);
-        else if (m.round === "ROUND_OF_16") leftR16.push(m);
-        else if (m.round === "QUARTER_FINALS") leftQF.push(m);
-        else if (m.round === "SEMI_FINALS") leftSF.push(m);
-      } else if (m.side === "right") {
-        if (m.round === "ROUND_OF_32") rightR32.push(m);
-        else if (m.round === "ROUND_OF_16") rightR16.push(m);
-        else if (m.round === "QUARTER_FINALS") rightQF.push(m);
-        else if (m.round === "SEMI_FINALS") rightSF.push(m);
-      }
-    }
-    return {
-      leftR32,
-      leftR16,
-      leftQF,
-      leftSF,
-      rightR32,
-      rightR16,
-      rightQF,
-      rightSF,
-      finalMatch,
-    };
-  }, [data.matches]);
+  const matchByKey = useMemo(
+    () => new Map(data.matches.map((m) => [m.matchKey, m])),
+    [data.matches]
+  );
 
-  const champion = slotMap.get("champion");
+  const finalMatch = useMemo(
+    () => data.matches.find((m) => m.round === "FINAL"),
+    [data.matches]
+  );
+
+  const championNation = useMemo(() => {
+    if (!finalMatch?.winnerId) return null;
+    if (finalMatch.homeNation?.id === finalMatch.winnerId) return finalMatch.homeNation;
+    if (finalMatch.awayNation?.id === finalMatch.winnerId) return finalMatch.awayNation;
+    return null;
+  }, [finalMatch]);
 
   return (
     <div className="knockout-bracket-root space-y-4">
       {editable && (
         <p className="text-sm text-white/55">
           Tap Round of 32 slots to add teams. Tap a match to pick the winner — or enter results
-          under Matches (MD 4–8). Winners advance automatically.
+          under Matches (MD 4–8). Winners advance automatically through the tree.
         </p>
       )}
 
       <div className="knockout-bracket-scroll overflow-x-auto overflow-y-hidden rounded-2xl border border-[#E53935]/30 bg-gradient-to-b from-[#0a1628] via-[#0d1f3c] to-[#081120] p-4 shadow-[inset_0_0_80px_rgba(0,40,100,0.35)]">
-        <div className="knockout-bracket-inner flex min-w-[1100px] items-stretch gap-2 pb-4">
-          <BracketSide
-            matches={[leftR32, leftR16, leftQF, leftSF]}
+        <div className="knockout-bracket-inner flex min-w-[1200px] items-stretch gap-1 pb-4">
+          <BracketTreeSide
+            side="left"
+            matchByKey={matchByKey}
             slotMap={slotMap}
             editable={editable}
             nations={data.nations}
-            align="left"
             onAssignSlot={onAssignSlot}
             onSetWinner={onSetWinner}
           />
 
-          <div className="flex w-[140px] shrink-0 flex-col items-center justify-center gap-6 px-2">
+          <div className="flex w-[150px] shrink-0 flex-col items-center justify-center gap-6 px-2">
             <RoundColumn label="Final" className="items-center">
               {finalMatch && (
-                <MatchPair
+                <BracketTreeGroup
                   match={finalMatch}
+                  feederMatches={[]}
                   slotMap={slotMap}
                   editable={editable}
                   nations={data.nations}
@@ -121,19 +87,16 @@ export function KnockoutBracketView({
             </RoundColumn>
             <div className="flex flex-col items-center gap-2">
               <Trophy className="h-10 w-10 text-[#FFD700]/80" />
-              <ChampionSlot
-                slot={champion}
-                editable={false}
-              />
+              <ChampionDisplay nation={championNation} />
             </div>
           </div>
 
-          <BracketSide
-            matches={[rightR32, rightR16, rightQF, rightSF]}
+          <BracketTreeSide
+            side="right"
+            matchByKey={matchByKey}
             slotMap={slotMap}
             editable={editable}
             nations={data.nations}
-            align="right"
             onAssignSlot={onAssignSlot}
             onSetWinner={onSetWinner}
           />
@@ -143,47 +106,137 @@ export function KnockoutBracketView({
   );
 }
 
-function BracketSide({
-  matches,
+function BracketTreeSide({
+  side,
+  matchByKey,
   slotMap,
   editable,
   nations,
-  align,
   onAssignSlot,
   onSetWinner,
 }: {
-  matches: BracketMatchState[][];
+  side: "left" | "right";
+  matchByKey: Map<string, BracketMatchState>;
   slotMap: Map<string, BracketSlotState>;
   editable: boolean;
   nations: BracketNation[];
-  align: "left" | "right";
   onAssignSlot?: (slotKey: string, nationalTeamId: string | null) => Promise<void>;
   onSetWinner?: (matchKey: string, winnerNationalTeamId: string) => Promise<void>;
 }) {
-  const labels = ["Round of 32", "Round of 16", "Quarter Finals", "Semi Finals"];
+  const rounds = useMemo(() => getBracketTreeGroups(side), [side]);
 
   return (
     <div
       className={cn(
-        "flex flex-1 gap-3",
-        align === "right" && "flex-row-reverse"
+        "flex flex-1 gap-2",
+        side === "right" && "flex-row-reverse"
       )}
     >
-      {matches.map((roundMatches, i) => (
-        <RoundColumn key={labels[i]} label={labels[i]}>
-          {roundMatches.map((m) => (
-            <MatchPair
-              key={m.matchKey}
-              match={m}
-              slotMap={slotMap}
-              editable={editable}
-              nations={nations}
-              onAssignSlot={onAssignSlot}
-              onSetWinner={onSetWinner}
-            />
-          ))}
+      {rounds.map((round) => (
+        <RoundColumn key={round.label} label={round.label}>
+          {round.groups.map((group) => {
+            const match = matchByKey.get(group.match.key);
+            if (!match) return null;
+            const feeders = group.feederMatches
+              .map((f) => matchByKey.get(f.key))
+              .filter((m): m is BracketMatchState => Boolean(m));
+            return (
+              <BracketTreeGroup
+                key={group.match.key}
+                match={match}
+                feederMatches={feeders}
+                slotMap={slotMap}
+                editable={editable}
+                nations={nations}
+                onAssignSlot={onAssignSlot}
+                onSetWinner={onSetWinner}
+              />
+            );
+          })}
         </RoundColumn>
       ))}
+    </div>
+  );
+}
+
+function BracketTreeGroup({
+  match,
+  feederMatches,
+  slotMap,
+  editable,
+  nations,
+  compact,
+  onAssignSlot,
+  onSetWinner,
+}: {
+  match: BracketMatchState;
+  feederMatches: BracketMatchState[];
+  slotMap: Map<string, BracketSlotState>;
+  editable: boolean;
+  nations: BracketNation[];
+  compact?: boolean;
+  onAssignSlot?: (slotKey: string, nationalTeamId: string | null) => Promise<void>;
+  onSetWinner?: (matchKey: string, winnerNationalTeamId: string) => Promise<void>;
+}) {
+  const hasFeeders = feederMatches.length === 2;
+
+  return (
+    <div
+      className={cn(
+        "bracket-tree-group flex items-center gap-0",
+        hasFeeders ? "min-h-[88px]" : ""
+      )}
+    >
+      {hasFeeders && (
+        <>
+          <div className="flex flex-col justify-center gap-2 py-1">
+            {feederMatches.map((f) => (
+              <MatchPair
+                key={f.matchKey}
+                match={f}
+                slotMap={slotMap}
+                editable={editable}
+                nations={nations}
+                compact
+                showConnectors={false}
+                onAssignSlot={onAssignSlot}
+                onSetWinner={onSetWinner}
+              />
+            ))}
+          </div>
+          <BracketConnector />
+        </>
+      )}
+      <MatchPair
+        match={match}
+        slotMap={slotMap}
+        editable={editable}
+        nations={nations}
+        compact={compact}
+        showConnectors={hasFeeders}
+        onAssignSlot={onAssignSlot}
+        onSetWinner={onSetWinner}
+      />
+    </div>
+  );
+}
+
+function BracketConnector() {
+  return (
+    <div className="relative flex w-6 shrink-0 items-stretch self-stretch" aria-hidden>
+      <svg
+        className="h-full w-full text-[#E53935]"
+        viewBox="0 0 24 100"
+        preserveAspectRatio="none"
+      >
+        <path
+          d="M0 25 H12 V50 H0 M0 75 H12 V50 H0 M12 50 H24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          vectorEffect="non-scaling-stroke"
+        />
+      </svg>
     </div>
   );
 }
@@ -202,7 +255,7 @@ function RoundColumn({
       <span className="text-center text-[10px] font-bold uppercase tracking-wider text-[#E53935]/90">
         {label}
       </span>
-      <div className="flex flex-1 flex-col justify-around gap-3">{children}</div>
+      <div className="flex flex-1 flex-col justify-around gap-4">{children}</div>
     </div>
   );
 }
@@ -213,6 +266,7 @@ function MatchPair({
   editable,
   nations,
   compact,
+  showConnectors = false,
   onAssignSlot,
   onSetWinner,
 }: {
@@ -221,17 +275,17 @@ function MatchPair({
   editable: boolean;
   nations: BracketNation[];
   compact?: boolean;
+  showConnectors?: boolean;
   onAssignSlot?: (slotKey: string, nationalTeamId: string | null) => Promise<void>;
   onSetWinner?: (matchKey: string, winnerNationalTeamId: string) => Promise<void>;
 }) {
-  const home = slotMap.get(match.homeSlot);
-  const away = slotMap.get(match.awaySlot);
+  const isR32 = match.round === "ROUND_OF_32";
   const [pickerOpen, setPickerOpen] = useState(false);
   const [winnerOpen, setWinnerOpen] = useState(false);
   const [activeSlot, setActiveSlot] = useState<string | null>(null);
 
   const canPickWinner = Boolean(
-    editable && home?.nationalTeamId && away?.nationalTeamId
+    editable && match.homeTeamId && match.awayTeamId && !match.homeWaiting && !match.awayWaiting
   );
 
   return (
@@ -239,7 +293,8 @@ function MatchPair({
       className={cn(
         "knockout-match-pair flex flex-col gap-1",
         compact && "gap-0.5",
-        canPickWinner && "cursor-pointer"
+        canPickWinner && "cursor-pointer",
+        showConnectors && "relative"
       )}
       onClick={() => canPickWinner && setWinnerOpen(true)}
       onKeyDown={(e) => {
@@ -248,29 +303,34 @@ function MatchPair({
       role={canPickWinner ? "button" : undefined}
       tabIndex={canPickWinner ? 0 : undefined}
     >
-      <TeamSlot
-        slot={home}
-        slotKey={match.homeSlot}
-        editable={editable && match.round === "ROUND_OF_32"}
-        isWinner={match.winnerId === home?.nationalTeamId}
-        isLoser={
-          Boolean(match.winnerId && home?.nationalTeamId && match.winnerId !== home.nationalTeamId)
-        }
+      <MatchTeamSlot
+        nation={isR32 ? slotMap.get(match.homeSlot)?.nation ?? null : match.homeNation}
+        waiting={!isR32 && match.homeWaiting}
+        empty={!isR32 && !match.homeNation && !match.homeWaiting}
+        editable={editable && isR32}
+        isWinner={match.winnerId === match.homeTeamId}
+        isLoser={Boolean(
+          match.winnerId && match.homeTeamId && match.winnerId !== match.homeTeamId
+        )}
         compact={compact}
         onSelect={() => {
           setActiveSlot(match.homeSlot);
           setPickerOpen(true);
         }}
       />
-      <div className="mx-auto h-3 w-px bg-[#E53935]/70" title={canPickWinner ? "Tap to pick winner" : undefined} />
-      <TeamSlot
-        slot={away}
-        slotKey={match.awaySlot}
-        editable={editable && match.round === "ROUND_OF_32"}
-        isWinner={match.winnerId === away?.nationalTeamId}
-        isLoser={
-          Boolean(match.winnerId && away?.nationalTeamId && match.winnerId !== away.nationalTeamId)
-        }
+      <div
+        className="mx-auto h-3 w-px bg-[#E53935]/70"
+        title={canPickWinner ? "Tap to pick winner" : undefined}
+      />
+      <MatchTeamSlot
+        nation={isR32 ? slotMap.get(match.awaySlot)?.nation ?? null : match.awayNation}
+        waiting={!isR32 && match.awayWaiting}
+        empty={!isR32 && !match.awayNation && !match.awayWaiting}
+        editable={editable && isR32}
+        isWinner={match.winnerId === match.awayTeamId}
+        isLoser={Boolean(
+          match.winnerId && match.awayTeamId && match.winnerId !== match.awayTeamId
+        )}
         compact={compact}
         onSelect={() => {
           setActiveSlot(match.awaySlot);
@@ -278,7 +338,7 @@ function MatchPair({
         }}
       />
 
-      {editable && match.round === "ROUND_OF_32" && (
+      {editable && isR32 && (
         <NationPickerModal
           open={pickerOpen}
           onClose={() => setPickerOpen(false)}
@@ -304,8 +364,6 @@ function MatchPair({
           open={winnerOpen}
           onClose={() => setWinnerOpen(false)}
           match={match}
-          home={home}
-          away={away}
           onPick={async (winnerId) => {
             setWinnerOpen(false);
             if (onSetWinner) await onSetWinner(match.matchKey, winnerId);
@@ -316,42 +374,43 @@ function MatchPair({
   );
 }
 
-function TeamSlot({
-  slot,
-  slotKey,
+function MatchTeamSlot({
+  nation,
+  waiting,
+  empty,
   editable,
   isWinner,
   isLoser,
   compact,
   onSelect,
 }: {
-  slot?: BracketSlotState;
-  slotKey: string;
+  nation: BracketNation | null;
+  waiting: boolean;
+  empty: boolean;
   editable: boolean;
   isWinner: boolean;
   isLoser: boolean;
   compact?: boolean;
   onSelect: () => void;
 }) {
-  const nation = slot?.nation;
-  const canEdit = editable && slotKey.startsWith("r32-");
+  const dimmed = waiting || empty;
 
   return (
     <button
       type="button"
-      disabled={!canEdit}
-        onClick={(e) => {
-          e.stopPropagation();
-          if (canEdit) onSelect();
-        }}
+      disabled={!editable}
+      onClick={(e) => {
+        e.stopPropagation();
+        if (editable) onSelect();
+      }}
       className={cn(
         "knockout-team-slot flex min-w-[100px] items-center justify-center gap-1.5 rounded-lg border-2 border-[#E53935] bg-[#0a1628]/90 px-2 py-1.5 text-center transition-all",
         compact ? "min-w-[88px] py-1 text-xs" : "min-w-[108px] py-2 text-sm",
-        canEdit && "cursor-pointer hover:border-[#ff6b6b] hover:bg-[#122a4d]",
-        !canEdit && "cursor-default",
+        editable && "cursor-pointer hover:border-[#ff6b6b] hover:bg-[#122a4d]",
+        !editable && "cursor-default",
         isWinner && "shadow-[0_0_12px_rgba(255,255,255,0.35)] ring-1 ring-white/40",
         isLoser && "opacity-40 grayscale",
-        !isWinner && !isLoser && "opacity-100"
+        dimmed && !isWinner && !isLoser && "opacity-45"
       )}
     >
       {nation ? (
@@ -360,20 +419,28 @@ function TeamSlot({
             {nation.flagEmoji ?? getNationFlag(nation.name)}
           </span>
           {!compact && (
-            <span className="truncate font-semibold text-white">{nation.code}</span>
+            <span
+              className={cn(
+                "truncate font-semibold",
+                isWinner ? "text-white" : "text-white/90"
+              )}
+            >
+              {nation.code}
+            </span>
           )}
         </>
-      ) : (
-        <span className="text-xs font-medium text-white/45">
-          {canEdit ? "+ Select Team" : "—"}
+      ) : waiting ? (
+        <span className="text-[10px] font-medium leading-tight text-white/40">
+          Waiting for winner
         </span>
+      ) : (
+        <span className="text-xs font-medium text-white/45">{editable ? "+ Select Team" : "—"}</span>
       )}
     </button>
   );
 }
 
-function ChampionSlot({ slot }: { slot?: BracketSlotState; editable: boolean }) {
-  const nation = slot?.nation;
+function ChampionDisplay({ nation }: { nation: BracketNation | null }) {
   return (
     <div
       className={cn(
@@ -463,18 +530,16 @@ function WinnerPickerModal({
   open,
   onClose,
   match,
-  home,
-  away,
   onPick,
 }: {
   open: boolean;
   onClose: () => void;
   match: BracketMatchState;
-  home?: BracketSlotState;
-  away?: BracketSlotState;
   onPick: (winnerId: string) => void | Promise<void>;
 }) {
-  if (!home?.nation || !away?.nation) return null;
+  const home = match.homeNation;
+  const away = match.awayNation;
+  if (!home || !away) return null;
 
   return (
     <MobileFullScreenModal
@@ -484,17 +549,18 @@ function WinnerPickerModal({
       subtitle="Select winner"
     >
       <div className="flex flex-col gap-3">
-        {[home, away].map((side) => (
+        {[
+          { nation: home, id: match.homeTeamId! },
+          { nation: away, id: match.awayTeamId! },
+        ].map(({ nation, id }) => (
           <button
-            key={side.nationalTeamId!}
+            key={id}
             type="button"
-            onClick={() => void onPick(side.nationalTeamId!)}
+            onClick={() => void onPick(id)}
             className="flex items-center gap-3 rounded-2xl bg-white/5 p-4 ring-1 ring-white/10 active:scale-[0.98]"
           >
-            <span className="text-3xl">
-              {side.nation!.flagEmoji ?? getNationFlag(side.nation!.name)}
-            </span>
-            <span className="font-bold text-white">{side.nation!.name}</span>
+            <span className="text-3xl">{nation.flagEmoji ?? getNationFlag(nation.name)}</span>
+            <span className="font-bold text-white">{nation.name}</span>
           </button>
         ))}
       </div>

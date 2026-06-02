@@ -14,10 +14,16 @@ export interface KnockoutMatchDef {
   round: KnockoutRound;
   matchday: number;
   side: BracketSide;
+  /** Display / layout slot ids */
   homeSlot: string;
   awaySlot: string;
+  /** Legacy — next-round slot key (derived from feeders in match-centric model) */
   winnerSlot: string;
   order: number;
+  /** For R16+: previous match whose winner fills home */
+  feederHomeMatchKey?: string;
+  /** For R16+: previous match whose winner fills away */
+  feederAwayMatchKey?: string;
 }
 
 const ROUND_LABELS: Record<KnockoutRound, string> = {
@@ -81,6 +87,8 @@ function buildSideBracket(side: "left" | "right"): {
       homeSlot: `r16-${p}-${m * 2}`,
       awaySlot: `r16-${p}-${m * 2 + 1}`,
       winnerSlot: `qf-${p}-${m}`,
+      feederHomeMatchKey: `r32-m-${p}-${m * 2}`,
+      feederAwayMatchKey: `r32-m-${p}-${m * 2 + 1}`,
       order: m,
     });
   }
@@ -103,6 +111,8 @@ function buildSideBracket(side: "left" | "right"): {
       homeSlot: `qf-${p}-${m * 2}`,
       awaySlot: `qf-${p}-${m * 2 + 1}`,
       winnerSlot: `sf-${p}-${m}`,
+      feederHomeMatchKey: `r16-m-${p}-${m * 2}`,
+      feederAwayMatchKey: `r16-m-${p}-${m * 2 + 1}`,
       order: m,
     });
   }
@@ -124,6 +134,8 @@ function buildSideBracket(side: "left" | "right"): {
     homeSlot: `sf-${p}-0`,
     awaySlot: `sf-${p}-1`,
     winnerSlot: `final-${side === "left" ? "0" : "1"}`,
+    feederHomeMatchKey: `qf-m-${p}-0`,
+    feederAwayMatchKey: `qf-m-${p}-1`,
     order: 0,
   });
 
@@ -148,6 +160,8 @@ const centerMatches: KnockoutMatchDef[] = [
     homeSlot: "final-0",
     awaySlot: "final-1",
     winnerSlot: "champion",
+    feederHomeMatchKey: "sf-m-l-0",
+    feederAwayMatchKey: "sf-m-r-0",
     order: 0,
   },
 ];
@@ -169,11 +183,45 @@ export const KNOCKOUT_MATCH_BY_KEY = new Map(KNOCKOUT_MATCHES.map((m) => [m.key,
 
 export const KNOCKOUT_MATCHDAYS = [4, 5, 6, 7, 8] as const;
 
-/** Slots fed only by match winners (not manually assigned). */
+/** Only Round of 32 slots accept manual team placement. */
 export function isManualSlot(slotKey: string): boolean {
   return slotKey.startsWith("r32-");
 }
 
+export function isR32Match(def: KnockoutMatchDef): boolean {
+  return def.round === "ROUND_OF_32";
+}
+
 export function getMatchForSlot(slotKey: string): KnockoutMatchDef | undefined {
   return KNOCKOUT_MATCHES.find((m) => m.homeSlot === slotKey || m.awaySlot === slotKey);
+}
+
+/** Group feeder matches that feed into a single downstream match (for tree layout). */
+export function getBracketTreeGroups(side: "left" | "right"): {
+  round: KnockoutRound;
+  label: string;
+  groups: { match: KnockoutMatchDef; feederMatches: KnockoutMatchDef[] }[];
+}[] {
+  const sideMatches = KNOCKOUT_MATCHES.filter((m) => m.side === side);
+  const byKey = new Map(sideMatches.map((m) => [m.key, m]));
+
+  const rounds: { round: KnockoutRound; label: string; keys: string[] }[] = [
+    { round: "ROUND_OF_32", label: "Round of 32", keys: sideMatches.filter((m) => m.round === "ROUND_OF_32").map((m) => m.key) },
+    { round: "ROUND_OF_16", label: "Round of 16", keys: sideMatches.filter((m) => m.round === "ROUND_OF_16").map((m) => m.key) },
+    { round: "QUARTER_FINALS", label: "Quarter Finals", keys: sideMatches.filter((m) => m.round === "QUARTER_FINALS").map((m) => m.key) },
+    { round: "SEMI_FINALS", label: "Semi Finals", keys: sideMatches.filter((m) => m.round === "SEMI_FINALS").map((m) => m.key) },
+  ];
+
+  return rounds.map(({ round, label, keys }) => ({
+    round,
+    label,
+    groups: keys.map((key) => {
+      const match = byKey.get(key)!;
+      const feeders =
+        match.feederHomeMatchKey && match.feederAwayMatchKey
+          ? [byKey.get(match.feederHomeMatchKey)!, byKey.get(match.feederAwayMatchKey)!]
+          : [];
+      return { match, feederMatches: feeders };
+    }),
+  }));
 }
