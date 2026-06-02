@@ -168,46 +168,19 @@ export async function getRankingsData(currentUserTeamName: string): Promise<Rank
 }
 
 export async function getUpcomingFixtureForPlayer(
-  playerNationality: string
+  playerNationality: string,
+  nationalTeamId?: string | null
 ): Promise<{ fixture: string; date?: string; status: "not_started" | "live" | "finished" }> {
-  const team = await prisma.nationalTeam.findFirst({
-    where: {
-      OR: [{ name: playerNationality }, { code: playerNationality }],
-    },
-  });
-
-  if (!team) {
-    return { fixture: "No fixture scheduled", status: "not_started" };
-  }
-
-  const nextMatch = await prisma.match.findFirst({
-    where: {
-      OR: [{ homeTeamId: team.id }, { awayTeamId: team.id }],
-      status: { in: ["SCHEDULED", "LIVE"] },
-    },
-    orderBy: { scheduledAt: "asc" },
-    include: { homeTeam: true, awayTeam: true },
-  });
-
-  if (!nextMatch) {
-    return { fixture: "No fixture scheduled", status: "not_started" };
-  }
-
-  const opponent =
-    nextMatch.homeTeamId === team.id ? nextMatch.awayTeam.name : nextMatch.homeTeam.name;
-  const status =
-    nextMatch.status === "LIVE"
-      ? "live"
-      : nextMatch.status === "FINISHED"
-        ? "finished"
-        : "not_started";
-
+  const { getPlayerFixture } = await import("@/lib/tournament/fixtures");
+  const data = await getPlayerFixture(nationalTeamId, playerNationality);
   return {
-    fixture: `${team.name} vs ${opponent}`,
-    date: nextMatch.scheduledAt.toLocaleDateString("en-GB", {
-      day: "numeric",
-      month: "short",
-    }),
-    status,
+    fixture: data.fixture,
+    date: data.scheduledAt
+      ? new Date(data.scheduledAt).toLocaleDateString("en-GB", {
+          day: "numeric",
+          month: "short",
+        })
+      : undefined,
+    status: data.status,
   };
 }

@@ -53,6 +53,7 @@ export const BETS_TABS: SubTab[] = [
 export const CALENDAR_TABS: SubTab[] = [
   { label: "Calendar", slug: "calendar" },
   { label: "Games", slug: "games" },
+  { label: "Table", slug: "table" },
 ];
 
 export function getDefaultTab(tabs: SubTab[]): string {

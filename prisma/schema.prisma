@@ -44,6 +44,11 @@ enum MatchStatus {
   POSTPONED
 }
 
+enum MatchStage {
+  GROUP
+  KNOCKOUT
+}
+
 enum BetStatus {
   PENDING
   ACCEPTED
@@ -228,6 +233,7 @@ model Player {
 
   fantasySlots FantasyTeamPlayer[]
   matchEvents  MatchEvent[]
+  motmMatches  Match[]          @relation("MotmPlayer")
   savedBy      SavedPlayer[]
 
   @@index([nationalTeamId])
@@ -235,23 +241,30 @@ model Player {
 }
 
 model Match {
-  id           String      @id @default(cuid())
-  homeTeamId   String
-  awayTeamId   String
-  homeTeam     NationalTeam @relation("HomeTeam", fields: [homeTeamId], references: [id])
-  awayTeam     NationalTeam @relation("AwayTeam", fields: [awayTeamId], references: [id])
-  scheduledAt  DateTime
-  matchday     Int?
-  status       MatchStatus @default(SCHEDULED)
-  homeScore    Int?
-  awayScore    Int?
+  id              String      @id @default(cuid())
+  homeTeamId      String
+  awayTeamId      String
+  homeTeam        NationalTeam @relation("HomeTeam", fields: [homeTeamId], references: [id])
+  awayTeam        NationalTeam @relation("AwayTeam", fields: [awayTeamId], references: [id])
+  scheduledAt     DateTime
+  matchday        Int?
+  groupName       String?
+  stage           MatchStage  @default(GROUP)
+  status          MatchStatus @default(SCHEDULED)
+  homeScore       Int?
+  awayScore       Int?
   manOfTheMatchId String?
-  bettingOpen  Boolean     @default(false)
-  createdAt    DateTime    @default(now())
-  updatedAt    DateTime    @updatedAt
+  manOfTheMatch   Player?     @relation("MotmPlayer", fields: [manOfTheMatchId], references: [id])
+  bettingOpen     Boolean     @default(false)
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
 
   events MatchEvent[]
   bets   Bet[]
+
+  @@index([matchday])
+  @@index([groupName])
+  @@index([scheduledAt])
 }
 
 model MatchEvent {
@@ -263,16 +276,22 @@ model MatchEvent {
   eventType String
   minute    Int?
   createdAt DateTime @default(now())
+
+  @@index([matchId])
+  @@index([playerId])
 }
 
 model ScoringRule {
-  id        String   @id @default(cuid())
-  ruleKey   String   @unique
+  id        String          @id @default(cuid())
+  ruleKey   String
+  position  PlayerPosition?
   label     String
   points    Float
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  isActive  Boolean         @default(true)
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+
+  @@unique([ruleKey, position])
 }
 
 // ─── Fantasy Teams ───────────────────────────────────────────────────────────

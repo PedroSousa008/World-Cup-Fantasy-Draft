@@ -1,5 +1,16 @@
-import type { Match, MatchEvent, NationalTeam, Player, ScoringRule } from "@prisma/client";
-import { DEFAULT_SCORING_POINTS, SCORING_EVENT_TYPES } from "@/lib/scoring/constants";
+import type {
+  Match,
+  MatchEvent,
+  NationalTeam,
+  Player,
+  PlayerPosition,
+  ScoringRule,
+} from "@prisma/client";
+import {
+  DEFAULT_POSITION_SCORING,
+  DEFAULT_SCORING_POINTS,
+  SCORING_EVENT_TYPES,
+} from "@/lib/scoring/constants";
 
 export type MatchWithTeams = Match & {
   homeTeam: NationalTeam;
@@ -23,14 +34,60 @@ export interface PlayerComputedStats {
   matchHistory: { matchday: number; opponent: string; points: number }[];
 }
 
-export function buildScoringMap(rules: ScoringRule[]): Map<string, number> {
-  const map = new Map<string, number>(
+export interface ScoringMaps {
+  default: Map<string, number>;
+  byPosition: Map<PlayerPosition, Map<string, number>>;
+}
+
+export function buildScoringMap(rules: ScoringRule[]): ScoringMaps {
+  const defaultMap = new Map<string, number>(
     Object.entries(DEFAULT_SCORING_POINTS).map(([key, points]) => [key, points])
   );
-  for (const rule of rules) {
-    map.set(rule.ruleKey.toUpperCase(), rule.points);
+  const byPosition = new Map<PlayerPosition, Map<string, number>>();
+
+  for (const pos of ["GK", "DEF", "MID", "FWD"] as PlayerPosition[]) {
+    const posMap = new Map(defaultMap);
+    const overrides = DEFAULT_POSITION_SCORING[pos];
+    if (overrides) {
+      for (const [key, points] of Object.entries(overrides)) {
+        posMap.set(key, points);
+      }
+    }
+    byPosition.set(pos, posMap);
   }
-  return map;
+
+  for (const rule of rules) {
+    const key = rule.ruleKey.toUpperCase();
+    if (rule.position) {
+      const posMap = byPosition.get(rule.position) ?? new Map(defaultMap);
+      posMap.set(key, rule.points);
+      byPosition.set(rule.position, posMap);
+    } else {
+      defaultMap.set(key, rule.points);
+      for (const [pos, posMap] of byPosition) {
+        const posOverrides = DEFAULT_POSITION_SCORING[pos];
+        if (!posOverrides || !(key in posOverrides)) {
+          posMap.set(key, rule.points);
+        }
+        byPosition.set(pos, posMap);
+      }
+    }
+  }
+
+  return { default: defaultMap, byPosition };
+}
+
+export function pointsForRuleKey(
+  scoring: ScoringMaps,
+  ruleKey: string,
+  position?: PlayerPosition
+): number {
+  const key = ruleKey.toUpperCase();
+  if (position) {
+    const posMap = scoring.byPosition.get(position);
+    if (posMap?.has(key)) return posMap.get(key)!;
+  }
+  return scoring.default.get(key) ?? 0;
 }
 
 function normalizeEventType(eventType: string): string {
@@ -52,18 +109,19 @@ function opponentForPlayer(
 
 function pointsForEvent(
   event: MatchEventWithMatch,
-  scoring: Map<string, number>
+  scoring: ScoringMaps,
+  position?: PlayerPosition
 ): number {
   const type = normalizeEventType(event.eventType);
 
   if (type === SCORING_EVENT_TYPES.MINUTES_PLAYED) {
     const minutes = event.minute ?? 0;
-    const per90 = scoring.get(SCORING_EVENT_TYPES.APPEARANCE) ?? 0;
+    const per90 = pointsForRuleKey(scoring, SCORING_EVENT_TYPES.APPEARANCE, position);
     if (minutes <= 0) return 0;
     return (minutes / 90) * per90;
   }
 
-  return scoring.get(type) ?? 0;
+  return pointsForRuleKey(scoring, type, position);
 }
 
 function incrementStat(stats: PlayerComputedStats, eventType: string, minute?: number | null) {
@@ -84,6 +142,8 @@ function incrementStat(stats: PlayerComputedStats, eventType: string, minute?: n
     case SCORING_EVENT_TYPES.OWN_GOAL:
       stats.ownGoals += 1;
       break;
+    case SCORING_EVENT_TYPES.PENALTY_MISS:
+      break;
     case SCORING_EVENT_TYPES.MOTM:
       stats.motmAwards += 1;
       break;
@@ -96,10 +156,11 @@ function incrementStat(stats: PlayerComputedStats, eventType: string, minute?: n
 }
 
 export function computePlayerStats(
-  player: Pick<Player, "id" | "nationality">,
+  player: Pick<Player, "id" | "nationality" | "position">,
   events: MatchEventWithMatch[],
   motmMatches: { id: string; matchday: number | null }[],
-  scoring: Map<string, number>
+  scoring: ScoringMaps,
+  cleanSheetBonusByMatchday?: Map<number, number>
 ): PlayerComputedStats {
   const stats: PlayerComputedStats = {
     goals: 0,
@@ -125,7 +186,7 @@ export function computePlayerStats(
     if (type === SCORING_EVENT_TYPES.MOTM && motmMatchIds.has(event.matchId)) continue;
 
     incrementStat(stats, event.eventType, event.minute);
-    const pts = pointsForEvent(event, scoring);
+    const pts = pointsForEvent(event, scoring, player.position);
     stats.totalPoints += pts;
 
     const matchday = event.match.matchday;
@@ -138,9 +199,17 @@ export function computePlayerStats(
     }
   }
 
+  if (cleanSheetBonusByMatchday) {
+    for (const [matchday, pts] of cleanSheetBonusByMatchday) {
+      stats.totalPoints += pts;
+      stats.matchdayPoints[matchday] = (stats.matchdayPoints[matchday] ?? 0) + pts;
+      pointsByMatchday.set(matchday, (pointsByMatchday.get(matchday) ?? 0) + pts);
+    }
+  }
+
   for (const motm of motmMatches) {
     stats.motmAwards += 1;
-    const motmPts = scoring.get(SCORING_EVENT_TYPES.MOTM) ?? 0;
+    const motmPts = pointsForRuleKey(scoring, SCORING_EVENT_TYPES.MOTM, player.position);
     stats.totalPoints += motmPts;
     if (motm.matchday != null) {
       stats.matchdayPoints[motm.matchday] =

@@ -27,6 +27,7 @@ function nation(
 }
 
 export const WORLD_CUP_NATIONS: readonly WorldCupNation[] = [
+  nation("Algeria", "algeria", "ALG", "🇩🇿"),
   nation("Argentina", "argentina", "ARG", "🇦🇷"),
   nation("Australia", "australia", "AUS", "🇦🇺"),
   nation("Austria", "austria", "AUT", "🇦🇹"),
@@ -57,6 +58,7 @@ export const WORLD_CUP_NATIONS: readonly WorldCupNation[] = [
   nation("Netherlands", "netherlands", "NED", "🇳🇱"),
   nation("New Zealand", "new-zealand", "NZL", "🇳🇿"),
   nation("Norway", "norway", "NOR", "🇳🇴"),
+  nation("Panama", "panama", "PAN", "🇵🇦"),
   nation("Paraguay", "paraguay", "PAR", "🇵🇾"),
   nation("Portugal", "portugal", "POR", "🇵🇹"),
   nation("Qatar", "qatar", "QAT", "🇶🇦"),

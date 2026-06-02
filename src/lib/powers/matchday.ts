@@ -27,8 +27,11 @@ export async function loadMatchdayInfos(): Promise<MatchdayInfo[]> {
   }
 
   const infos: MatchdayInfo[] = [];
+  const fromDb = [...byMd.keys()].sort((a, b) => a - b);
+  const maxMd =
+    fromDb.length > 0 ? Math.max(...fromDb, MATCHDAY_COUNT) : MATCHDAY_COUNT;
 
-  for (let md = 1; md <= MATCHDAY_COUNT; md++) {
+  for (let md = 1; md <= maxMd; md++) {
     const bucket = byMd.get(md);
     if (!bucket) {
       infos.push({

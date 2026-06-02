@@ -1,25 +1,30 @@
 import { notFound } from "next/navigation";
 import { SubTabs } from "@/components/layout/sub-tabs";
-import { SectionPage } from "@/components/layout/section-page";
+import { PageHeader } from "@/components/layout/section-page";
 import { CALENDAR_TABS } from "@/lib/navigation";
+import { CalendarView } from "@/components/tournament/calendar-view";
+import { GamesView } from "@/components/tournament/games-view";
+import { TableView } from "@/components/tournament/table-view";
+import {
+  getAllTournamentMatches,
+  getMatchesByMatchday,
+  getGroupTablesData,
+} from "@/lib/tournament/get-tournament-data";
 
-const TAB_CONTENT: Record<
-  string,
-  { title: string; description: string; emptyTitle: string; emptyDescription: string }
-> = {
+export const dynamic = "force-dynamic";
+
+const TAB_META: Record<string, { title: string; description: string }> = {
   calendar: {
     title: "Calendar",
-    description: "Matchdays, drafts, deadlines, and custom league events.",
-    emptyTitle: "Calendar is empty",
-    emptyDescription:
-      "Events will appear here once the Owner adds them to the schedule.",
+    description: "Monthly, weekly, and daily views of every World Cup match.",
   },
   games: {
     title: "Games",
-    description: "World Cup match cards with scores, events, and related bets.",
-    emptyTitle: "No games scheduled",
-    emptyDescription:
-      "Match cards will appear once the Owner creates the tournament schedule.",
+    description: "All matches grouped by matchday. Tap a match for details.",
+  },
+  table: {
+    title: "Table",
+    description: "Live group standings and third-place qualification ranking.",
   },
 };
 
@@ -32,12 +37,36 @@ export default async function CalendarTabPage({ params }: PageProps) {
   const validTab = CALENDAR_TABS.find((t) => t.slug === tab);
   if (!validTab) notFound();
 
-  const content = TAB_CONTENT[tab];
+  const meta = TAB_META[tab];
 
+  if (tab === "calendar") {
+    const matches = await getAllTournamentMatches();
+    return (
+      <div className="space-y-6">
+        <SubTabs tabs={CALENDAR_TABS} activeTab={tab} basePath="/calendar" accent="green" />
+        <PageHeader title={meta.title} description={meta.description} />
+        <CalendarView matches={matches} />
+      </div>
+    );
+  }
+
+  if (tab === "games") {
+    const matchdayGroups = await getMatchesByMatchday();
+    return (
+      <div className="space-y-6">
+        <SubTabs tabs={CALENDAR_TABS} activeTab={tab} basePath="/calendar" accent="green" />
+        <PageHeader title={meta.title} description={meta.description} />
+        <GamesView matchdayGroups={matchdayGroups} />
+      </div>
+    );
+  }
+
+  const { tables, bestThird } = await getGroupTablesData();
   return (
     <div className="space-y-6">
       <SubTabs tabs={CALENDAR_TABS} activeTab={tab} basePath="/calendar" accent="green" />
-      <SectionPage {...content} accent="blue" />
+      <PageHeader title={meta.title} description={meta.description} />
+      <TableView tables={tables} bestThird={bestThird} />
     </div>
   );
 }

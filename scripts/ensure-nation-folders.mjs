@@ -8,6 +8,7 @@ const publicPlayers = path.join(root, "public", "players");
 
 /** Keep in sync with src/lib/nations/world-cup-nations.ts */
 const SLUGS = [
+  "algeria",
   "argentina",
   "australia",
   "austria",
@@ -38,6 +39,7 @@ const SLUGS = [
   "netherlands",
   "new-zealand",
   "norway",
+  "panama",
   "paraguay",
   "portugal",
   "qatar",

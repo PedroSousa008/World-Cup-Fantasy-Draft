@@ -19,11 +19,11 @@ const OWNER_SECTIONS = [
   {
     icon: Calendar,
     title: "Matches & Events",
-    description: "Create matches, enter results, and schedule events.",
+    description: "Enter results, goals, assists, cards, MOTM, and open matches for betting.",
     color: "text-[#00C853]",
     bg: "bg-[#00C853]/10",
-    href: null,
-    available: false,
+    href: "/owner/matches",
+    available: true,
   },
   {
     icon: Settings,
