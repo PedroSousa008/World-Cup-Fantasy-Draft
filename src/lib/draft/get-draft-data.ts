@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/db/prisma";
 import type { DraftData, DraftPlayerCard } from "@/lib/draft/types";
-import { getNationFlag } from "@/lib/nations";
+import { getNationFlag, isCatalogNationName, isCatalogNationSlug } from "@/lib/nations";
 import type { PlayerPosition } from "@/lib/players/types";
 
 /**
@@ -37,7 +37,14 @@ export async function getDraftData(userId: string): Promise<DraftData> {
     }),
   ]);
 
-  const draftPlayers: DraftPlayerCard[] = players.map((player) => {
+  const draftPlayers: DraftPlayerCard[] = players
+    .filter((player) => {
+      const slug = player.nationalTeam?.slug ?? null;
+      const nationName = player.nationalTeam?.name ?? player.nationality;
+      if (slug) return isCatalogNationSlug(slug);
+      return isCatalogNationName(nationName);
+    })
+    .map((player) => {
     const owner = player.fantasySlots[0]?.fantasyTeam.user ?? null;
     const nationName = player.nationalTeam?.name ?? player.nationality;
 

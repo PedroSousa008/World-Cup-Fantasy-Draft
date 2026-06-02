@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/db/prisma";
-import { WORLD_CUP_NATION_BY_NAME } from "@/lib/nations/world-cup-nations";
+import { WORLD_CUP_NATION_BY_NAME, isCatalogNationSlug } from "@/lib/nations/world-cup-nations";
 import { ensureNationSchema } from "@/lib/db/ensure-nation-schema";
 
 export interface NationListItem {
@@ -77,7 +77,12 @@ export async function getOwnerPlayersPageData(): Promise<OwnerPlayersPageData> {
       include: { _count: { select: { players: true } } },
     });
 
-    if (nations.length === 0) {
+    const catalogNations = nations.filter((n) => {
+      const slug = n.slug ?? WORLD_CUP_NATION_BY_NAME.get(n.name)?.slug;
+      return slug != null && isCatalogNationSlug(slug);
+    });
+
+    if (catalogNations.length === 0) {
       return {
         nations: [],
         error: null,
@@ -86,7 +91,7 @@ export async function getOwnerPlayersPageData(): Promise<OwnerPlayersPageData> {
     }
 
     return {
-      nations: nations.map(mapNation),
+      nations: catalogNations.map(mapNation),
       error: null,
       needsSetup: false,
     };
@@ -107,6 +112,8 @@ export async function getNationsListData(): Promise<NationListItem[]> {
 
 export async function getNationDetailData(slug: string): Promise<NationDetailData | null> {
   try {
+    if (!isCatalogNationSlug(slug)) return null;
+
     const schema = await ensureNationSchema();
     if (!schema.ok) return null;
 

@@ -5,6 +5,7 @@ import { prisma } from "@/lib/db/prisma";
 import { buildPlayerPhotoPath } from "@/lib/players/photo";
 import { parsePositionInput } from "@/lib/players/position-parse";
 import { ensureNationSchema } from "@/lib/db/ensure-nation-schema";
+import { WORLD_CUP_NATION_BY_SLUG } from "@/lib/nations/world-cup-nations";
 
 const IMAGE_EXT = new Set([".png", ".jpg", ".jpeg", ".webp", ".gif"]);
 
@@ -61,6 +62,12 @@ export async function registerPlayerFromFile(
   const imageFilename = input.imageFilename.trim();
   const name = input.name.trim();
   const position = parsePositionInput(input.position);
+
+  if (!WORLD_CUP_NATION_BY_SLUG.has(nationSlug)) {
+    throw new Error(
+      `Nation "${nationSlug}" is not in the World Cup nations catalog.`
+    );
+  }
 
   if (!name) throw new Error("Player name is required.");
   if (!position) {

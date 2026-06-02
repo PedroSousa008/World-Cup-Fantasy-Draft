@@ -1,6 +1,7 @@
 import { TeamStatus } from "@prisma/client";
 import { prisma } from "@/lib/db/prisma";
-import { WORLD_CUP_NATIONS } from "@/lib/nations/world-cup-nations";
+import { WORLD_CUP_NATIONS, WORLD_CUP_NATION_SLUGS } from "@/lib/nations/world-cup-nations";
+import { removeNationFromDatabase } from "@/lib/nations/remove-nation";
 
 /** Upsert all participating World Cup nations (no players). */
 export async function seedWorldCupNations(): Promise<{ created: number; updated: number }> {
@@ -35,6 +36,15 @@ export async function seedWorldCupNations(): Promise<{ created: number; updated:
 
     if (existing) updated++;
     else created++;
+  }
+
+  const orphans = await prisma.nationalTeam.findMany({
+    where: { slug: { notIn: [...WORLD_CUP_NATION_SLUGS] } },
+    select: { slug: true },
+  });
+
+  for (const orphan of orphans) {
+    await removeNationFromDatabase(orphan.slug);
   }
 
   return { created, updated };

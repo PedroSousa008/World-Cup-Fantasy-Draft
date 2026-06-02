@@ -4,6 +4,9 @@ export {
   WORLD_CUP_NATION_BY_SLUG,
   WORLD_CUP_NATION_BY_NAME,
   WORLD_CUP_NATION_FLAGS,
+  WORLD_CUP_NATION_SLUGS,
+  isCatalogNationSlug,
+  isCatalogNationName,
   type WorldCupNation,
 } from "@/lib/nations/world-cup-nations";
 

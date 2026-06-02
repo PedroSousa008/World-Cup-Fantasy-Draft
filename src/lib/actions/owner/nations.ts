@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db/prisma";
 import { prepareOwnerPlayersDatabase } from "@/lib/db/ensure-nation-schema";
 import { seedWorldCupNations } from "@/lib/nations/seed-nations";
-import { WORLD_CUP_NATION_BY_SLUG } from "@/lib/nations/world-cup-nations";
+import { WORLD_CUP_NATION_BY_SLUG, WORLD_CUP_NATIONS } from "@/lib/nations/world-cup-nations";
 import type { OwnerActionResult } from "@/lib/actions/owner/helpers";
 import { requireOwnerSession } from "@/lib/actions/owner/helpers";
 
@@ -21,7 +21,7 @@ export async function setupOwnerPlayersDatabaseAction(): Promise<
   revalidatePath("/my-team/draft");
   return {
     ok: true,
-    data: { message: "Database ready. 48 nations synced." },
+    data: { message: `Database ready. ${WORLD_CUP_NATIONS.length} nations synced.` },
   };
 }
 

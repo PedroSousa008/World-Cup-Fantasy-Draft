@@ -56,7 +56,6 @@ export const WORLD_CUP_NATIONS: readonly WorldCupNation[] = [
   nation("Morocco", "morocco", "MAR", "🇲🇦"),
   nation("Netherlands", "netherlands", "NED", "🇳🇱"),
   nation("New Zealand", "new-zealand", "NZL", "🇳🇿"),
-  nation("Nigeria", "nigeria", "NGA", "🇳🇬"),
   nation("Norway", "norway", "NOR", "🇳🇴"),
   nation("Paraguay", "paraguay", "PAR", "🇵🇾"),
   nation("Portugal", "portugal", "POR", "🇵🇹"),
@@ -91,3 +90,13 @@ export const WORLD_CUP_NATION_BY_NAME = new Map(
 export const WORLD_CUP_NATION_FLAGS: Record<string, string> = Object.fromEntries(
   WORLD_CUP_NATIONS.map((n) => [n.name, n.flagEmoji])
 );
+
+export const WORLD_CUP_NATION_SLUGS = new Set(WORLD_CUP_NATIONS.map((n) => n.slug));
+
+export function isCatalogNationSlug(slug: string): boolean {
+  return WORLD_CUP_NATION_BY_SLUG.has(slug);
+}
+
+export function isCatalogNationName(name: string): boolean {
+  return WORLD_CUP_NATION_BY_NAME.has(name);
+}

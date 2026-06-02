@@ -37,7 +37,6 @@ const SLUGS = [
   "morocco",
   "netherlands",
   "new-zealand",
-  "nigeria",
   "norway",
   "paraguay",
   "portugal",
