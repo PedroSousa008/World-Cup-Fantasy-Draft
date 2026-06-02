@@ -1,32 +1,40 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
+import { ChevronDown, Plus, Search, Trash2, Check } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Select } from "@/components/ui/select";
+import { SegmentedControl } from "@/components/ui/segmented-control";
 import { SCORING_EVENT_TYPES } from "@/lib/scoring/constants";
 import {
   saveMatchResultAction,
+  resetMatchAction,
   toggleMatchBettingAction,
 } from "@/lib/actions/owner/matches";
-import { formatKickoff } from "@/lib/tournament/format";
 import { getNationFlag } from "@/lib/nations";
+import { MobileFullScreenModal } from "@/components/ui/mobile-full-screen-modal";
 
-const EVENT_OPTIONS = [
-  { value: SCORING_EVENT_TYPES.GOAL, label: "Goal" },
-  { value: SCORING_EVENT_TYPES.ASSIST, label: "Assist" },
-  { value: SCORING_EVENT_TYPES.YELLOW_CARD, label: "Yellow card" },
-  { value: SCORING_EVENT_TYPES.RED_CARD, label: "Red card" },
-  { value: SCORING_EVENT_TYPES.OWN_GOAL, label: "Own goal" },
-  { value: SCORING_EVENT_TYPES.PENALTY_MISS, label: "Missed penalty" },
-  { value: SCORING_EVENT_TYPES.PENALTY_SAVE, label: "Saved penalty" },
-];
+const EVENT_SECTIONS = [
+  { type: SCORING_EVENT_TYPES.GOAL, label: "Goalscorers" },
+  { type: SCORING_EVENT_TYPES.ASSIST, label: "Assists" },
+  { type: SCORING_EVENT_TYPES.YELLOW_CARD, label: "Yellow Cards" },
+  { type: SCORING_EVENT_TYPES.RED_CARD, label: "Red Cards" },
+  { type: SCORING_EVENT_TYPES.OWN_GOAL, label: "Own Goals" },
+  { type: SCORING_EVENT_TYPES.PENALTY_MISS, label: "Missed Penalties" },
+  { type: SCORING_EVENT_TYPES.PENALTY_SAVE, label: "Saved Penalties" },
+] as const;
 
 interface MatchEventRow {
   playerId: string;
   eventType: string;
-  minute: number | null;
+}
+
+interface PlayerOption {
+  id: string;
+  name: string;
+  position: string;
+  teamId: string;
+  teamName: string;
 }
 
 interface OwnerMatchEditorProps {
@@ -43,32 +51,66 @@ interface OwnerMatchEditorProps {
     homeTeam: { id: string; name: string; flagEmoji: string | null };
     awayTeam: { id: string; name: string; flagEmoji: string | null };
   };
-  events: MatchEventRow[];
-  players: { id: string; name: string; position: string; teamId: string; teamName: string }[];
+  events: { playerId: string; eventType: string }[];
+  players: PlayerOption[];
+}
+
+function formatCompactKickoff(iso: string): string {
+  const d = new Date(iso);
+  const date = d
+    .toLocaleDateString("en-GB", { day: "numeric", month: "short" })
+    .replace(".", "")
+    .toUpperCase();
+  const time = d.toLocaleTimeString("en-GB", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+  return `${date} • ${time}`;
+}
+
+function statusBadgeClass(status: string): string {
+  switch (status) {
+    case "LIVE":
+      return "border-emerald-400/50 bg-emerald-500/15 text-emerald-300";
+    case "FINISHED":
+      return "border-white/20 bg-white/10 text-white/80";
+    default:
+      return "border-[#4a90d9]/40 bg-[#0066FF]/10 text-[#7eb8ff]";
+  }
 }
 
 export function OwnerMatchEditor({ match, events: initialEvents, players }: OwnerMatchEditorProps) {
-  const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
+  const [resetOpen, setResetOpen] = useState(false);
+  const [motmOpen, setMotmOpen] = useState(false);
+
   const [homeScore, setHomeScore] = useState(match.homeScore);
   const [awayScore, setAwayScore] = useState(match.awayScore);
   const [status, setStatus] = useState(match.status);
   const [bettingOpen, setBettingOpen] = useState(match.bettingOpen);
   const [motmId, setMotmId] = useState(match.manOfTheMatchId ?? "");
   const [events, setEvents] = useState<MatchEventRow[]>(
-    initialEvents.map((e) => ({
-      playerId: e.playerId,
-      eventType: e.eventType,
-      minute: e.minute,
-    }))
+    initialEvents.map((e) => ({ playerId: e.playerId, eventType: e.eventType }))
   );
 
-  const addEvent = () => {
-    setEvents((prev) => [
-      ...prev,
-      { playerId: players[0]?.id ?? "", eventType: SCORING_EVENT_TYPES.GOAL, minute: null },
-    ]);
+  const motmPlayer = useMemo(
+    () => players.find((p) => p.id === motmId),
+    [players, motmId]
+  );
+
+  const matchMeta = useMemo(() => {
+    const parts: string[] = [];
+    if (match.matchday != null) parts.push(`MATCHDAY ${match.matchday}`);
+    if (match.groupName) parts.push(`GROUP ${match.groupName.toUpperCase()}`);
+    return parts.join(" • ");
+  }, [match.matchday, match.groupName]);
+
+  const showSuccess = () => {
+    setSuccess(true);
+    window.setTimeout(() => setSuccess(false), 2800);
   };
 
   const save = () => {
@@ -87,7 +129,25 @@ export function OwnerMatchEditor({ match, events: initialEvents, players }: Owne
         setError(result.error);
         return;
       }
-      router.refresh();
+      showSuccess();
+    });
+  };
+
+  const reset = () => {
+    setError(null);
+    startTransition(async () => {
+      const result = await resetMatchAction(match.id);
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
+      setHomeScore(0);
+      setAwayScore(0);
+      setStatus("SCHEDULED");
+      setMotmId("");
+      setEvents([]);
+      setResetOpen(false);
+      showSuccess();
     });
   };
 
@@ -95,149 +155,430 @@ export function OwnerMatchEditor({ match, events: initialEvents, players }: Owne
     const next = !bettingOpen;
     startTransition(async () => {
       const result = await toggleMatchBettingAction(match.id, next);
-      if (result.ok) {
-        setBettingOpen(next);
-        router.refresh();
-      }
+      if (result.ok) setBettingOpen(next);
     });
   };
 
+  const addEvent = (eventType: string) => {
+    setEvents((prev) => [...prev, { playerId: "", eventType }]);
+  };
+
+  const updateEventPlayer = (index: number, playerId: string) => {
+    setEvents((prev) => prev.map((e, i) => (i === index ? { ...e, playerId } : e)));
+  };
+
+  const removeEvent = (index: number) => {
+    setEvents((prev) => prev.filter((_, i) => i !== index));
+  };
+
   return (
-    <div className="space-y-6">
-      <div className="wc-card space-y-2">
-        <p className="text-sm text-[#081120]/60">
-          MD{match.matchday} · Group {match.groupName} · {formatKickoff(match.scheduledAt)}
+    <div className="space-y-4 pb-8">
+      {/* Match header */}
+      <div className="wc-card-dark overflow-hidden p-4">
+        {matchMeta && (
+          <p className="text-center text-[10px] font-bold uppercase tracking-widest text-white/45">
+            {matchMeta}
+          </p>
+        )}
+        <p className="mt-1 text-center text-xs font-medium text-white/55">
+          {formatCompactKickoff(match.scheduledAt)}
         </p>
-        <div className="flex items-center justify-center gap-4 text-lg font-bold">
-          <span>
-            {match.homeTeam.flagEmoji ?? getNationFlag(match.homeTeam.name)} {match.homeTeam.name}
-          </span>
-          <span className="text-[#081120]/40">vs</span>
-          <span>
-            {match.awayTeam.name} {match.awayTeam.flagEmoji ?? getNationFlag(match.awayTeam.name)}
+
+        <div className="mt-4 flex items-center justify-between gap-2">
+          <TeamLabel team={match.homeTeam} align="left" />
+          <span className="shrink-0 text-xs font-bold text-white/35">VS</span>
+          <TeamLabel team={match.awayTeam} align="right" />
+        </div>
+
+        <div className="mt-3 flex justify-center">
+          <span
+            className={cn(
+              "rounded-full border px-3 py-0.5 text-[10px] font-bold uppercase tracking-wider",
+              statusBadgeClass(status)
+            )}
+          >
+            {status}
           </span>
         </div>
-        <p className="text-center text-xs text-[#081120]/50">
-          Clean sheets are calculated automatically for GK/DEF when a team concedes 0 goals.
-        </p>
       </div>
 
-      <div className="wc-card grid gap-4 sm:grid-cols-2">
-        <label className="block text-sm font-semibold text-[#081120]">
-          Home goals
-          <Input
-            type="number"
-            min={0}
+      {/* Score + status */}
+      <div className="wc-card-dark space-y-4 p-4">
+        <p className="text-xs font-bold uppercase tracking-wider text-white/45">Result</p>
+        <div className="flex items-end gap-3">
+          <ScoreInput
+            label={match.homeTeam.name}
             value={homeScore}
-            onChange={(e) => setHomeScore(Number(e.target.value))}
-            className="mt-1"
+            onChange={setHomeScore}
           />
-        </label>
-        <label className="block text-sm font-semibold text-[#081120]">
-          Away goals
-          <Input
-            type="number"
-            min={0}
+          <span className="pb-3 text-sm font-bold text-white/30">–</span>
+          <ScoreInput
+            label={match.awayTeam.name}
             value={awayScore}
-            onChange={(e) => setAwayScore(Number(e.target.value))}
-            className="mt-1"
+            onChange={setAwayScore}
           />
-        </label>
-        <label className="block text-sm font-semibold text-[#081120]">
-          Status
-          <Select
+        </div>
+
+        <div className="space-y-2">
+          <p className="text-xs font-bold uppercase tracking-wider text-white/45">Status</p>
+          <SegmentedControl
             value={status}
-            onChange={(e) => setStatus(e.target.value)}
-            className="mt-1"
+            onChange={setStatus}
             options={[
               { value: "SCHEDULED", label: "Scheduled" },
               { value: "LIVE", label: "Live" },
               { value: "FINISHED", label: "Finished" },
             ]}
           />
-        </label>
-        <label className="block text-sm font-semibold text-[#081120]">
-          Man of the Match
-          <Select
-            value={motmId}
-            onChange={(e) => setMotmId(e.target.value)}
-            className="mt-1"
-            options={[
-              { value: "", label: "— None —" },
-              ...players.map((p) => ({ value: p.id, label: `${p.name} (${p.teamName})` })),
-            ]}
-          />
-        </label>
-      </div>
-
-      <div className="flex flex-wrap items-center gap-3">
-        <Button type="button" variant={bettingOpen ? "success" : "outline"} onClick={toggleBetting}>
-          Betting {bettingOpen ? "open" : "closed"}
-        </Button>
-      </div>
-
-      <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <h3 className="text-lg font-bold text-white">Match events</h3>
-          <Button type="button" variant="secondary" size="sm" onClick={addEvent}>
-            Add event
-          </Button>
         </div>
-        {events.map((ev, idx) => (
-          <div key={idx} className="wc-card grid gap-2 sm:grid-cols-4">
-            <Select
-              value={ev.playerId}
-              onChange={(e) => {
-                const next = [...events];
-                next[idx] = { ...ev, playerId: e.target.value };
-                setEvents(next);
-              }}
-              options={players.map((p) => ({
-                value: p.id,
-                label: `${p.name} (${p.position})`,
-              }))}
-            />
-            <Select
-              value={ev.eventType}
-              onChange={(e) => {
-                const next = [...events];
-                next[idx] = { ...ev, eventType: e.target.value };
-                setEvents(next);
-              }}
-              options={EVENT_OPTIONS}
-            />
-            <Input
-              type="number"
-              placeholder="Min"
-              min={0}
-              max={130}
-              value={ev.minute ?? ""}
-              onChange={(e) => {
-                const next = [...events];
-                next[idx] = {
-                  ...ev,
-                  minute: e.target.value === "" ? null : Number(e.target.value),
-                };
-                setEvents(next);
-              }}
-            />
-            <Button
-              type="button"
-              variant="danger"
-              size="sm"
-              onClick={() => setEvents(events.filter((_, i) => i !== idx))}
-            >
-              Remove
-            </Button>
-          </div>
+      </div>
+
+      {/* MOTM */}
+      <div className="wc-card-dark space-y-2 p-4">
+        <p className="text-xs font-bold uppercase tracking-wider text-white/45">
+          Man of the Match
+        </p>
+        <button
+          type="button"
+          onClick={() => setMotmOpen(true)}
+          className="flex w-full items-center justify-between rounded-xl bg-white/5 px-3 py-3 text-left ring-1 ring-white/10 active:bg-white/[0.08]"
+        >
+          {motmPlayer ? (
+            <span className="text-sm font-semibold text-white">
+              {motmPlayer.name}{" "}
+              <span className="text-white/45">({motmPlayer.position})</span>
+            </span>
+          ) : (
+            <span className="text-sm text-white/40">Select player…</span>
+          )}
+          <Search className="h-4 w-4 shrink-0 text-white/35" />
+        </button>
+        {motmId && (
+          <button
+            type="button"
+            onClick={() => setMotmId("")}
+            className="text-xs font-semibold text-white/45 hover:text-white/70"
+          >
+            Clear selection
+          </button>
+        )}
+      </div>
+
+      {/* Betting toggle */}
+      <button
+        type="button"
+        onClick={toggleBetting}
+        className={cn(
+          "flex w-full items-center justify-between rounded-xl px-4 py-3 text-sm font-semibold ring-1 transition-colors",
+          bettingOpen
+            ? "bg-emerald-500/15 text-emerald-300 ring-emerald-400/30"
+            : "bg-white/5 text-white/60 ring-white/10"
+        )}
+      >
+        <span>Betting</span>
+        <span>{bettingOpen ? "Open" : "Closed"}</span>
+      </button>
+
+      {/* Events */}
+      <div className="space-y-2">
+        <p className="px-1 text-xs font-bold uppercase tracking-wider text-white/45">
+          Match Events
+        </p>
+        {EVENT_SECTIONS.map((section) => (
+          <EventSection
+            key={section.type}
+            label={section.label}
+            eventType={section.type}
+            events={events}
+            players={players}
+            onAdd={() => addEvent(section.type)}
+            onRemove={removeEvent}
+            onChangePlayer={updateEventPlayer}
+          />
         ))}
       </div>
 
-      {error && <p className="text-sm font-semibold text-[#E53935]">{error}</p>}
+      {error && (
+        <p className="rounded-xl bg-red-500/15 px-3 py-2 text-sm font-semibold text-red-300">
+          {error}
+        </p>
+      )}
 
-      <Button type="button" onClick={save} isLoading={pending} className="w-full sm:w-auto">
-        Save match
-      </Button>
+      {/* Actions */}
+      <div className="flex flex-col gap-2 sm:flex-row">
+        <Button
+          type="button"
+          onClick={save}
+          isLoading={pending}
+          className="flex-1"
+          size="lg"
+        >
+          Save match
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          onClick={() => setResetOpen(true)}
+          disabled={pending}
+          className="text-red-400 hover:bg-red-500/10 hover:text-red-300"
+        >
+          Reset match
+        </Button>
+      </div>
+
+      {success && (
+        <div
+          className="fixed bottom-6 left-1/2 z-[200] flex -translate-x-1/2 items-center gap-2 rounded-full bg-emerald-500 px-4 py-2.5 text-sm font-bold text-white shadow-lg"
+          role="status"
+        >
+          <Check className="h-4 w-4" />
+          Match updated
+        </div>
+      )}
+
+      <PlayerSearchModal
+        open={motmOpen}
+        onClose={() => setMotmOpen(false)}
+        title="Man of the Match"
+        players={players}
+        selectedId={motmId}
+        onSelect={(id) => {
+          setMotmId(id);
+          setMotmOpen(false);
+        }}
+      />
+
+      <MobileFullScreenModal
+        open={resetOpen}
+        onClose={() => setResetOpen(false)}
+        title="Reset match?"
+        subtitle="This will remove all entered match data and recalculate fantasy points."
+      >
+        <div className="flex flex-col gap-3">
+          <Button
+            type="button"
+            variant="danger"
+            size="lg"
+            isLoading={pending}
+            onClick={reset}
+            className="w-full"
+          >
+            Reset match
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="lg"
+            onClick={() => setResetOpen(false)}
+            className="w-full"
+          >
+            Cancel
+          </Button>
+        </div>
+      </MobileFullScreenModal>
     </div>
+  );
+}
+
+function TeamLabel({
+  team,
+  align,
+}: {
+  team: { name: string; flagEmoji: string | null };
+  align: "left" | "right";
+}) {
+  return (
+    <div
+      className={cn(
+        "flex min-w-0 flex-1 items-center gap-1.5",
+        align === "right" && "flex-row-reverse text-right"
+      )}
+    >
+      <span className="text-xl leading-none">
+        {team.flagEmoji ?? getNationFlag(team.name)}
+      </span>
+      <span className="truncate text-sm font-bold text-white">{team.name}</span>
+    </div>
+  );
+}
+
+function ScoreInput({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: number;
+  onChange: (v: number) => void;
+}) {
+  return (
+    <div className="flex-1 space-y-1">
+      <p className="truncate text-center text-[10px] font-medium text-white/40">{label}</p>
+      <input
+        type="number"
+        min={0}
+        inputMode="numeric"
+        value={value}
+        onChange={(e) => onChange(Math.max(0, Number(e.target.value) || 0))}
+        className="h-12 w-full rounded-xl border border-white/10 bg-white/5 text-center text-2xl font-black tabular-nums text-white focus:border-[#0066FF] focus:outline-none focus:ring-2 focus:ring-[#0066FF]/25"
+      />
+    </div>
+  );
+}
+
+function EventSection({
+  label,
+  eventType,
+  events,
+  players,
+  onAdd,
+  onRemove,
+  onChangePlayer,
+}: {
+  label: string;
+  eventType: string;
+  events: MatchEventRow[];
+  players: PlayerOption[];
+  onAdd: () => void;
+  onRemove: (index: number) => void;
+  onChangePlayer: (index: number, playerId: string) => void;
+}) {
+  const indices = events
+    .map((e, i) => ({ e, i }))
+    .filter(({ e }) => e.eventType === eventType)
+    .map(({ i }) => i);
+
+  const [open, setOpen] = useState(indices.length > 0);
+
+  return (
+    <div className="wc-card-dark overflow-hidden">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="flex w-full items-center justify-between px-4 py-3 text-left"
+      >
+        <span className="text-sm font-semibold text-white">
+          {label}
+          {indices.length > 0 && (
+            <span className="ml-2 rounded-full bg-white/10 px-2 py-0.5 text-xs text-white/60">
+              {indices.length}
+            </span>
+          )}
+        </span>
+        <ChevronDown
+          className={cn(
+            "h-4 w-4 text-white/40 transition-transform",
+            open && "rotate-180"
+          )}
+        />
+      </button>
+
+      {open && (
+        <div className="space-y-2 border-t border-white/8 px-3 pb-3 pt-2">
+          {indices.length === 0 && (
+            <p className="py-1 text-xs text-white/35">No entries yet.</p>
+          )}
+          {indices.map((globalIndex) => (
+            <div key={globalIndex} className="flex items-center gap-2">
+              <select
+                value={events[globalIndex].playerId}
+                onChange={(e) => onChangePlayer(globalIndex, e.target.value)}
+                className="h-10 min-w-0 flex-1 truncate rounded-lg border border-white/10 bg-white/5 px-2 text-sm text-white focus:border-[#0066FF] focus:outline-none"
+              >
+                <option value="" className="bg-[#0d1a2e]">
+                  Select player…
+                </option>
+                {players.map((p) => (
+                  <option key={p.id} value={p.id} className="bg-[#0d1a2e]">
+                    {p.name} ({p.position})
+                  </option>
+                ))}
+              </select>
+              <button
+                type="button"
+                onClick={() => onRemove(globalIndex)}
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-red-500/10 text-red-400 active:bg-red-500/20"
+                aria-label="Remove"
+              >
+                <Trash2 className="h-4 w-4" />
+              </button>
+            </div>
+          ))}
+          <button
+            type="button"
+            onClick={onAdd}
+            className="flex w-full items-center justify-center gap-1.5 rounded-lg bg-white/5 py-2 text-xs font-semibold text-white/60 active:bg-white/10"
+          >
+            <Plus className="h-3.5 w-3.5" />
+            Add {label.toLowerCase().replace(/s$/, "")}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function PlayerSearchModal({
+  open,
+  onClose,
+  title,
+  players,
+  selectedId,
+  onSelect,
+}: {
+  open: boolean;
+  onClose: () => void;
+  title: string;
+  players: PlayerOption[];
+  selectedId: string;
+  onSelect: (id: string) => void;
+}) {
+  const [q, setQ] = useState("");
+
+  const filtered = useMemo(() => {
+    const query = q.trim().toLowerCase();
+    if (!query) return players;
+    return players.filter(
+      (p) =>
+        p.name.toLowerCase().includes(query) ||
+        p.teamName.toLowerCase().includes(query) ||
+        p.position.toLowerCase().includes(query)
+    );
+  }, [players, q]);
+
+  return (
+    <MobileFullScreenModal open={open} onClose={onClose} title={title}>
+      <div className="relative mb-3">
+        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/35" />
+        <input
+          type="search"
+          placeholder="Search players…"
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          className="w-full rounded-xl bg-black/40 py-2.5 pl-9 pr-3 text-sm text-white ring-1 ring-white/15 focus:outline-none focus:ring-[#0066FF]/40"
+        />
+      </div>
+      <div className="max-h-[60vh] space-y-1 overflow-y-auto">
+        {filtered.map((p) => (
+          <button
+            key={p.id}
+            type="button"
+            onClick={() => onSelect(p.id)}
+            className={cn(
+              "flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left active:bg-white/10",
+              selectedId === p.id ? "bg-[#0066FF]/20 ring-1 ring-[#0066FF]/50" : "bg-white/5"
+            )}
+          >
+            <span className="font-semibold text-white">{p.name}</span>
+            <span className="text-xs text-white/45">
+              {p.position} · {p.teamName}
+            </span>
+          </button>
+        ))}
+        {filtered.length === 0 && (
+          <p className="py-4 text-center text-sm text-white/40">No players found.</p>
+        )}
+      </div>
+    </MobileFullScreenModal>
   );
 }

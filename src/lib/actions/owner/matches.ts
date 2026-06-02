@@ -126,6 +126,40 @@ export async function saveMatchResultAction(
   return { ok: true };
 }
 
+export async function resetMatchAction(matchId: string): Promise<OwnerActionResult> {
+  const owner = await requireOwnerSession();
+  if (!owner) return { ok: false, error: "Unauthorized." };
+
+  const match = await prisma.match.findUnique({ where: { id: matchId } });
+  if (!match) return { ok: false, error: "Match not found." };
+
+  const wasKnockout = Boolean(match.knockoutMatchKey);
+
+  await prisma.$transaction(async (tx) => {
+    await tx.matchEvent.deleteMany({ where: { matchId } });
+    await tx.match.update({
+      where: { id: matchId },
+      data: {
+        homeScore: null,
+        awayScore: null,
+        status: MatchStatus.SCHEDULED,
+        manOfTheMatchId: null,
+        knockoutWinnerId: null,
+      },
+    });
+  });
+
+  if (wasKnockout) {
+    const { recomputeKnockoutBracket } = await import(
+      "@/lib/tournament/knockout/bracket-service"
+    );
+    await recomputeKnockoutBracket();
+  }
+
+  revalidateTournament();
+  return { ok: true };
+}
+
 export async function toggleMatchBettingAction(
   matchId: string,
   bettingOpen: boolean
