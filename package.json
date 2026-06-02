@@ -36,7 +36,8 @@
     "players:australia": "tsx scripts/register-australia-batch.ts",
     "players:austria": "tsx scripts/register-austria-batch.ts",
     "players:bosnia": "tsx scripts/register-bosnia-and-herzegovina-batch.ts",
-    "players:canada": "tsx scripts/register-canada-batch.ts"
+    "players:canada": "tsx scripts/register-canada-batch.ts",
+    "players:cape-verde": "tsx scripts/register-cape-verde-batch.ts"
   },
   "prisma": {
     "seed": "npx tsx prisma/seed.ts"
