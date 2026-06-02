@@ -19,7 +19,10 @@ const overrideSchema = z.object({
 
 function revalidate() {
   revalidatePath("/owner/matches-events");
+  revalidatePath("/owner/matches-events/events/group-stage");
   revalidatePath("/calendar");
+  revalidatePath("/calendar/table");
+  revalidatePath("/calendar/table/group-stage");
 }
 
 export async function saveGroupStandingOverrideAction(

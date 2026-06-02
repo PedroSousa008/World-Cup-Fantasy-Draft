@@ -1,6 +1,6 @@
 import type { Match, NationalTeam } from "@prisma/client";
 import type { GroupStandingRow, GroupTable, ThirdPlaceRow } from "@/lib/tournament/types";
-import { GROUP_LETTERS } from "@/lib/tournament/groups-data";
+import { GROUP_LETTERS, TOURNAMENT_GROUPS } from "@/lib/tournament/groups-data";
 
 type FinishedMatch = Match & {
   homeTeam: NationalTeam;
@@ -65,7 +65,19 @@ function toRow(acc: TeamAccumulator, position: number): GroupStandingRow {
     qualified: false,
     eliminated: false,
     isThirdPlace: false,
+    manualOverride: false,
   };
+}
+
+function teamsForGroup(group: string, teams: NationalTeam[]): NationalTeam[] {
+  const byGroup = teams.filter((t) => t.groupName === group);
+  if (byGroup.length >= 4) return byGroup;
+  const names = TOURNAMENT_GROUPS[group];
+  if (!names) return byGroup;
+  const byName = names
+    .map((name) => teams.find((t) => t.name === name))
+    .filter((t): t is NationalTeam => Boolean(t));
+  return byName.length > 0 ? byName : byGroup;
 }
 
 function sortRows(rows: GroupStandingRow[]): GroupStandingRow[] {
@@ -120,6 +132,7 @@ export function applyStandingOverrides(
         goalsAgainst,
         goalDifference,
         points,
+        manualOverride: true,
       };
     });
 
@@ -143,7 +156,7 @@ export function computeGroupStandings(
   const tables: GroupTable[] = [];
 
   for (const group of GROUP_LETTERS) {
-    const groupTeams = teams.filter((t) => t.groupName === group);
+    const groupTeams = teamsForGroup(group, teams);
     const accMap = new Map<string, TeamAccumulator>();
     for (const t of groupTeams) accMap.set(t.id, emptyAcc(t));
 

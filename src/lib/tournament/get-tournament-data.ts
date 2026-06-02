@@ -99,8 +99,16 @@ export async function getGroupTablesData() {
   const rawTables = applyStandingOverrides(computed, overrides);
   const bestThird = computeBestThirdPlace(rawTables);
   const tables = applyBestThirdQualification(rawTables, bestThird);
+  const overrideIds = new Set(overrides.map((o) => o.nationalTeamId));
+  const tablesWithFlags = tables.map((table) => ({
+    ...table,
+    rows: table.rows.map((row) => ({
+      ...row,
+      manualOverride: overrideIds.has(row.teamId),
+    })),
+  }));
 
-  return { tables, bestThird, overrides };
+  return { tables: tablesWithFlags, bestThird, overrides };
 }
 
 export async function getMatchDetail(matchId: string) {

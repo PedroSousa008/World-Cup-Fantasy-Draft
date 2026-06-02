@@ -38,6 +38,8 @@ export interface GroupStandingRow {
   qualified: boolean;
   eliminated: boolean;
   isThirdPlace: boolean;
+  /** Owner manual correction is active for this team. */
+  manualOverride: boolean;
 }
 
 export interface GroupTable {
