@@ -8,10 +8,11 @@ import {
   User,
   Trash2,
 } from "lucide-react";
-import { BottomSheet } from "@/components/ui/bottom-sheet";
-import { Button } from "@/components/ui/button";
-import { FantasyPlayerCard } from "@/components/player/fantasy-player-card";
+import { MobileFullScreenModal } from "@/components/ui/mobile-full-screen-modal";
+import { PlayerAvatar } from "@/components/player/player-avatar";
+import { getNationFlag } from "@/lib/nations";
 import { getPositionLabel } from "@/lib/players/types";
+import { getNationTheme } from "@/lib/nation-theme";
 import type { SquadSlot } from "@/lib/squad/formations";
 import type { FantasyPlayer } from "@/lib/squad/squad-utils";
 
@@ -55,12 +56,16 @@ export function SlotActionSheet({
 
   if (!slot || !player) return null;
 
+  const zoneLabel = slot.zone === "starter" ? "Starting XI" : "Bench";
+  const theme = getNationTheme(player.nation);
+
   return (
-    <BottomSheet
+    <MobileFullScreenModal
       open={open}
       onClose={handleClose}
       title={view === "substitution" ? "Substitute" : player.name}
-      className="z-[105]"
+      subtitle={view === "actions" ? `${zoneLabel} · ${getPositionLabel(player.position)}` : undefined}
+      className="flex flex-col gap-3"
     >
       {view === "substitution" ? (
         <SubstitutionList
@@ -74,110 +79,69 @@ export function SlotActionSheet({
           }}
         />
       ) : (
-        <FilledSlotActions
-          player={player}
-          slot={slot}
-          zoneLabel={slot.zone === "starter" ? "Starting XI" : "Bench"}
-          isCaptain={isCaptain}
-          isViceCaptain={isViceCaptain}
-          hasSubstitutionTargets={substitutionTargets.length > 0}
-          onSubstitution={() => setView("substitution")}
-          onViewProfile={() => {
-            onViewProfile();
-            handleClose();
-          }}
-          onMakeCaptain={() => {
-            onMakeCaptain();
-            handleClose();
-          }}
-          onMakeViceCaptain={() => {
-            onMakeViceCaptain();
-            handleClose();
-          }}
-          onRemove={() => {
-            onRemove();
-            handleClose();
-          }}
-          onCancel={handleClose}
-        />
-      )}
-    </BottomSheet>
-  );
-}
+        <>
+          <div className="flex items-center gap-3 rounded-2xl bg-white/5 p-3 ring-1 ring-white/10">
+            <div className="relative shrink-0">
+              <div className="h-14 w-14 overflow-hidden rounded-xl ring-2 ring-[#FFD700]/40">
+                <PlayerAvatar
+                  name={player.name}
+                  photoUrl={player.photoUrl}
+                  className="h-full w-full"
+                  initialsClassName="h-full w-full text-lg font-black text-white"
+                />
+              </div>
+              <span className="absolute -left-1 -top-1 flex h-6 w-6 items-center justify-center rounded-full bg-black/60 text-[10px] font-black text-[#FFD700] ring-1 ring-[#FFD700]/50">
+                {player.currentMatchdayPoints ?? 0}
+              </span>
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="truncate font-bold text-white">{player.name}</p>
+              <p className="text-xs text-white/55">
+                {getPositionLabel(player.position)} · {getNationFlag(player.nation)}{" "}
+                {theme.abbr}
+              </p>
+              <p className="mt-0.5 text-xs text-white/45">
+                {player.totalPoints} pts total · MD {player.currentMatchdayPoints ?? 0}
+              </p>
+            </div>
+            <span className="shrink-0 rounded-md bg-black/40 px-1.5 py-0.5 text-[10px] font-black text-white ring-1 ring-[#FFD700]/35">
+              {player.managerNationAbbr ?? "—"}
+            </span>
+          </div>
 
-function FilledSlotActions({
-  player,
-  slot,
-  zoneLabel,
-  isCaptain,
-  isViceCaptain,
-  hasSubstitutionTargets,
-  onSubstitution,
-  onViewProfile,
-  onMakeCaptain,
-  onMakeViceCaptain,
-  onRemove,
-  onCancel,
-}: {
-  player: FantasyPlayer;
-  slot: SquadSlot;
-  zoneLabel: string;
-  isCaptain: boolean;
-  isViceCaptain: boolean;
-  hasSubstitutionTargets: boolean;
-  onSubstitution: () => void;
-  onViewProfile: () => void;
-  onMakeCaptain: () => void;
-  onMakeViceCaptain: () => void;
-  onRemove: () => void;
-  onCancel: () => void;
-}) {
-  return (
-    <div className="space-y-3">
-      <div className="flex justify-center pb-2">
-        <FantasyPlayerCard
-          player={player}
-          size="bench"
-          isCaptain={isCaptain}
-          isViceCaptain={isViceCaptain}
-        />
-      </div>
-      <p className="text-center text-xs text-[#081120]/45">
-        {zoneLabel} · {getPositionLabel(player.position)}
-      </p>
-
-      {hasSubstitutionTargets && (
-        <ActionButton
-          icon={ArrowLeftRight}
-          label="Substitute"
-          onClick={onSubstitution}
-          primary
-        />
+          <div className="flex flex-col gap-2">
+            {substitutionTargets.length > 0 && (
+              <ActionButton
+                icon={ArrowLeftRight}
+                label="Substitute"
+                onClick={() => setView("substitution")}
+                primary
+              />
+            )}
+            <ActionButton icon={User} label="View Profile" onClick={onViewProfile} />
+            <ActionButton
+              icon={Crown}
+              label={isCaptain ? "Captain ✓" : "Make Captain"}
+              onClick={onMakeCaptain}
+              disabled={isCaptain}
+            />
+            <ActionButton
+              icon={Crown}
+              label={isViceCaptain ? "Vice-Captain ✓" : "Make Vice-Captain"}
+              onClick={onMakeViceCaptain}
+              disabled={isViceCaptain}
+            />
+            <ActionButton
+              icon={Trash2}
+              label={slot.zone === "starter" ? "Remove from Lineup" : "Remove from Bench"}
+              onClick={onRemove}
+              danger
+            />
+            <ActionButton icon={ArrowLeft} label="Close" onClick={handleClose} />
+          </div>
+        </>
       )}
-      <ActionButton icon={User} label="View Profile" onClick={onViewProfile} />
-      <ActionButton
-        icon={Crown}
-        label={isCaptain ? "Captain ✓" : "Make Captain"}
-        onClick={onMakeCaptain}
-        disabled={isCaptain}
-      />
-      <ActionButton
-        icon={Crown}
-        label={isViceCaptain ? "Vice-Captain ✓" : "Make Vice-Captain"}
-        onClick={onMakeViceCaptain}
-        disabled={isViceCaptain}
-      />
-      {slot.zone === "starter" && (
-        <ActionButton icon={Trash2} label="Remove from lineup" onClick={onRemove} danger />
-      )}
-      {slot.zone === "bench" && (
-        <ActionButton icon={Trash2} label="Remove from bench" onClick={onRemove} danger />
-      )}
-
-      <Button variant="outline" className="h-12 w-full border-[#081120]/15" onClick={onCancel}>
-        Close
-      </Button>
-    </div>
+    </MobileFullScreenModal>
   );
 }
 
@@ -208,29 +172,33 @@ function SubstitutionList({
         Back
       </button>
 
-      <p className="text-sm text-[#081120]/60">
-        Swap {player.name} with a {isStarter ? "bench" : "starting XI"} {positionLabel}
+      <p className="text-sm text-white/60">
+        Swap {player.name} with a {isStarter ? "bench" : "Starting XI"} {positionLabel}
       </p>
 
       {targets.length === 0 ? (
-        <p className="py-6 text-center text-sm text-[#081120]/40">
+        <p className="py-6 text-center text-sm text-white/40">
           No {positionLabel}s available to swap.
         </p>
       ) : (
-        targets.map(({ slot: targetSlot, player: targetPlayer }) => (
-          <button
-            key={targetSlot.id}
-            type="button"
-            onClick={() => onSelect(targetSlot.id)}
-            className="flex w-full items-center gap-3 rounded-2xl bg-[#081120]/5 p-3 text-left active:scale-[0.98]"
-          >
-            <FantasyPlayerCard player={targetPlayer} size="bench" />
-            <div>
-              <p className="font-bold text-[#081120]">{targetPlayer.name}</p>
-              <p className="text-xs text-[#081120]/50">{targetPlayer.totalPoints} pts</p>
-            </div>
-          </button>
-        ))
+        <div className="flex flex-col gap-2">
+          {targets.map(({ slot: targetSlot, player: targetPlayer }) => (
+            <button
+              key={targetSlot.id}
+              type="button"
+              onClick={() => onSelect(targetSlot.id)}
+              className="flex w-full items-center gap-3 rounded-2xl bg-white/5 p-3 text-left ring-1 ring-white/10 active:scale-[0.98]"
+            >
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-black/40 text-sm font-black text-[#FFD700]">
+                {targetPlayer.currentMatchdayPoints ?? 0}
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="font-bold text-white">{targetPlayer.name}</p>
+                <p className="text-xs text-white/50">{targetPlayer.totalPoints} pts</p>
+              </div>
+            </button>
+          ))}
+        </div>
       )}
     </div>
   );
@@ -256,12 +224,12 @@ function ActionButton({
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className={`flex min-h-[52px] w-full items-center gap-3 rounded-2xl px-4 font-semibold transition-all active:scale-[0.98] disabled:opacity-50 ${
+      className={`flex min-h-[48px] w-full items-center gap-3 rounded-2xl px-4 text-sm font-semibold transition-all active:scale-[0.98] disabled:opacity-50 ${
         primary
           ? "bg-gradient-to-r from-[#FFD700] to-[#B8860B] text-[#081120]"
           : danger
-            ? "bg-[#E53935]/10 text-[#E53935]"
-            : "bg-[#081120]/5 text-[#081120]"
+            ? "bg-[#E53935]/20 text-[#FF8A80]"
+            : "bg-white/10 text-white"
       }`}
     >
       <Icon className="h-5 w-5 shrink-0" />

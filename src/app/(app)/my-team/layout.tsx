@@ -21,6 +21,9 @@ export default async function MyTeamLayout({
       captainId: null,
       viceCaptainId: null,
       formationId: "4-3-3" as const,
+      managerNation: session.user.selectedNation ?? "—",
+      managerNationAbbr: "—",
+      currentMatchday: 1,
     };
 
   return (

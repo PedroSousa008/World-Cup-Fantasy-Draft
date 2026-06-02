@@ -8,6 +8,8 @@ import {
 } from "@/lib/squad/slot-keys";
 import type { FantasyPlayer } from "@/lib/squad/squad-utils";
 import { getPlayerFixture } from "@/lib/tournament/fixtures";
+import { getCurrentMatchday } from "@/lib/tournament/matchday-lock";
+import { getNationTheme } from "@/lib/nation-theme";
 
 export interface SquadInitialData {
   assignedPlayers: FantasyPlayer[];
@@ -15,6 +17,9 @@ export interface SquadInitialData {
   captainId: string | null;
   viceCaptainId: string | null;
   formationId: FormationId;
+  managerNation: string;
+  managerNationAbbr: string;
+  currentMatchday: number;
 }
 
 export async function getSquadData(userId: string): Promise<SquadInitialData | null> {
@@ -32,6 +37,14 @@ export async function getSquadData(userId: string): Promise<SquadInitialData | n
   });
 
   if (!team) return null;
+
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { selectedNation: true },
+  });
+  const managerNation = user?.selectedNation ?? "—";
+  const managerNationAbbr = getNationTheme(managerNation).abbr;
+  const currentMatchday = (await getCurrentMatchday()) ?? 1;
 
   const statsMap = await loadAllPlayerStats();
 
@@ -60,9 +73,9 @@ export async function getSquadData(userId: string): Promise<SquadInitialData | n
       club: p.club ?? "",
       price: 0,
       totalPoints: stats?.totalPoints ?? 0,
-      matchdayPoints: stats?.matchdayPoints
-        ? Object.values(stats.matchdayPoints).reduce((a, b) => a + b, 0)
-        : 0,
+      currentMatchdayPoints: stats?.matchdayPoints?.[currentMatchday] ?? 0,
+      matchdayPoints: stats?.matchdayPoints?.[currentMatchday] ?? 0,
+      managerNationAbbr,
       matchStatus: fixture.status,
       upcomingFixture: fixture.fixture,
       matchDate: fixture.scheduledAt
@@ -103,6 +116,9 @@ export async function getSquadData(userId: string): Promise<SquadInitialData | n
     captainId: team.captainId,
     viceCaptainId: team.viceCaptainId,
     formationId,
+    managerNation,
+    managerNationAbbr,
+    currentMatchday,
   };
 }
 

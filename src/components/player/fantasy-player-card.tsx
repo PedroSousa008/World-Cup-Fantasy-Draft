@@ -17,12 +17,15 @@ export interface FantasyCardPlayer {
   matchDate?: string;
   matchStatus?: MatchStatus;
   photoUrl?: string;
-  ownerSelectedNation?: string | null;
+  currentMatchdayPoints?: number;
+  managerNationAbbr?: string;
 }
 
 interface FantasyPlayerCardProps {
   player: FantasyCardPlayer;
   size?: "pitch" | "bench" | "list" | "full";
+  /** Team tab cards use matchday badge + manager nation abbr */
+  teamLayout?: boolean;
   isCaptain?: boolean;
   isViceCaptain?: boolean;
   onClick?: () => void;
@@ -37,10 +40,10 @@ function toWorldCup(player: FantasyCardPlayer): WorldCupCardData {
     nation: player.nation,
     position: player.position,
     totalPoints: player.totalPoints,
-    matchdayPoints: player.matchdayPoints,
+    matchdayPoints: player.currentMatchdayPoints ?? player.matchdayPoints ?? 0,
     upcomingFixture: player.upcomingFixture,
     matchDate: player.matchDate,
-    ownerSelectedNation: player.ownerSelectedNation,
+    managerNationAbbr: player.managerNationAbbr,
     isCaptain: false,
     isViceCaptain: false,
   };
@@ -49,6 +52,7 @@ function toWorldCup(player: FantasyCardPlayer): WorldCupCardData {
 export function FantasyPlayerCard({
   player,
   size = "pitch",
+  teamLayout = false,
   isCaptain,
   isViceCaptain,
   onClick,
@@ -64,6 +68,7 @@ export function FantasyPlayerCard({
     <WorldCupPlayerCard
       player={mapped}
       size={cardSize}
+      variant={teamLayout ? "team" : "default"}
       onClick={onClick}
       className={className}
     />

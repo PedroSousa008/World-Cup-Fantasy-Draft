@@ -99,6 +99,7 @@ export async function getPlayerDetailsFromDb(
     club: player.club ?? "—",
     price: 0,
     totalPoints: stats.totalPoints,
+    currentMatchdayPoints: stats.matchdayPoints[currentMd] ?? 0,
     matchdayPoints: stats.matchdayPoints[currentMd] ?? 0,
     matchStatus: fixture.status,
     upcomingFixture: fixture.fixture,

@@ -9,7 +9,11 @@ export interface FantasyPlayer {
   club: string;
   price: number;
   totalPoints: number;
+  /** Points for the active / current matchday only */
+  currentMatchdayPoints: number;
   matchdayPoints: number;
+  /** Fantasy manager nation badge (e.g. POR) */
+  managerNationAbbr?: string;
   matchStatus: MatchStatus;
   upcomingFixture: string;
   matchDate?: string;

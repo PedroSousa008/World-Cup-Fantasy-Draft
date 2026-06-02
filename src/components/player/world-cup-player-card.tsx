@@ -19,8 +19,8 @@ export interface WorldCupCardData {
   matchdayPoints?: number;
   upcomingFixture?: string;
   matchDate?: string;
-  /** Owner user's selected nation — top-left badge only when assigned */
-  ownerSelectedNation?: string | null;
+  /** Fantasy manager nation abbreviation — top-right on team cards (e.g. POR) */
+  managerNationAbbr?: string | null;
   isCaptain?: boolean;
   isViceCaptain?: boolean;
 }
@@ -28,47 +28,66 @@ export interface WorldCupCardData {
 interface WorldCupPlayerCardProps {
   player: WorldCupCardData;
   size?: "draft" | "bench" | "pitch" | "list" | "full";
+  /** Team view: top-left = MD points, top-right = manager nation abbr */
+  variant?: "default" | "team";
   onClick?: () => void;
   className?: string;
   footer?: React.ReactNode;
 }
 
-function OwnerNationBadge({
-  nation,
+function MatchdayPointsBadge({
+  points,
   size,
 }: {
-  nation: string | null | undefined;
+  points: number;
   size: WorldCupPlayerCardProps["size"];
 }) {
   const sizeClass = {
-    draft: "h-5 w-5 text-[9px]",
-    pitch: "h-5 w-5 text-[9px]",
-    bench: "h-6 w-6 text-[10px]",
-    list: "h-7 w-7 text-[11px]",
-    full: "h-9 w-9 text-sm",
+    draft: "h-6 w-6 min-w-6 text-[10px]",
+    pitch: "h-5 w-5 min-w-5 text-[9px]",
+    bench: "h-6 w-6 min-w-6 text-[10px]",
+    list: "h-7 w-7 min-w-7 text-[11px]",
+    full: "h-9 w-9 min-w-9 text-sm",
   }[size ?? "draft"];
-
-  if (!nation) {
-    return (
-      <span
-        className={cn(
-          "flex items-center justify-center rounded-full bg-black/20 ring-1 ring-white/25",
-          sizeClass
-        )}
-        aria-hidden
-      />
-    );
-  }
 
   return (
     <span
       className={cn(
-        "flex items-center justify-center rounded-full bg-black/35 shadow-md ring-1 ring-[#FFD700]/40 backdrop-blur-sm",
+        "flex items-center justify-center rounded-full bg-black/50 font-black tabular-nums text-[#FFD700] shadow-md ring-1 ring-[#FFD700]/45 backdrop-blur-sm",
         sizeClass
       )}
-      title={`Owned by manager (${nation})`}
+      title="Matchday points"
+      aria-label={`${points} matchday points`}
     >
-      {getNationFlag(nation)}
+      {points}
+    </span>
+  );
+}
+
+function ManagerNationAbbrBadge({
+  abbr,
+  size,
+}: {
+  abbr: string;
+  size: WorldCupPlayerCardProps["size"];
+}) {
+  const textClass = {
+    draft: "text-[7px] px-1 py-0.5",
+    pitch: "text-[7px] px-1 py-0.5",
+    bench: "text-[8px] px-1.5 py-0.5",
+    list: "text-[8px] px-1.5 py-0.5",
+    full: "text-xs px-2 py-1",
+  }[size ?? "draft"];
+
+  return (
+    <span
+      className={cn(
+        "rounded-md bg-black/30 font-black tracking-wider text-white ring-1 ring-[#FFD700]/35 backdrop-blur-sm",
+        textClass
+      )}
+      title="Manager nation"
+    >
+      {abbr}
     </span>
   );
 }
@@ -76,10 +95,14 @@ function OwnerNationBadge({
 function WorldCupPlayerCardInner({
   player,
   size = "draft",
+  variant = "default",
   onClick,
   className,
   footer,
 }: WorldCupPlayerCardProps) {
+  const isTeamCard = variant === "team";
+  const mdPoints = player.matchdayPoints ?? 0;
+  const managerAbbr = player.managerNationAbbr ?? "—";
   const theme = getNationTheme(player.nation);
   const positionLabel = getPositionLabel(player.position);
   const fixture = player.upcomingFixture ?? "No fixture scheduled";
@@ -90,7 +113,7 @@ function WorldCupPlayerCardInner({
   const widthClass = {
     draft: "w-full min-w-0",
     pitch: "w-full max-w-[72px]",
-    bench: "w-[96px]",
+    bench: "w-[100px] shrink-0",
     list: "w-full",
     full: "w-full max-w-[280px] mx-auto",
   }[size];
@@ -131,7 +154,7 @@ function WorldCupPlayerCardInner({
             }}
           />
 
-          {/* Top bar: owner nation (user) left, player nation right */}
+          {/* Top bar */}
           <div
             className={cn(
               "relative flex items-start justify-between",
@@ -142,18 +165,26 @@ function WorldCupPlayerCardInner({
               size === "full" && "px-4 pt-4"
             )}
           >
-            <OwnerNationBadge nation={player.ownerSelectedNation} size={size} />
-            <span
-              className={cn(
-                "rounded-md bg-black/30 px-1.5 py-0.5 font-black tracking-wider text-white ring-1 ring-[#FFD700]/35 backdrop-blur-sm",
-                size === "draft" && "text-[7px]",
-                size === "pitch" && "text-[7px]",
-                size === "bench" && "text-[8px]",
-                size === "full" && "text-xs"
-              )}
-            >
-              {theme.abbr}
-            </span>
+            {isTeamCard ? (
+              <MatchdayPointsBadge points={mdPoints} size={size} />
+            ) : (
+              <span className="h-5 w-5" aria-hidden />
+            )}
+            {isTeamCard ? (
+              <ManagerNationAbbrBadge abbr={managerAbbr} size={size} />
+            ) : (
+              <span
+                className={cn(
+                  "rounded-md bg-black/30 px-1.5 py-0.5 font-black tracking-wider text-white ring-1 ring-[#FFD700]/35 backdrop-blur-sm",
+                  size === "draft" && "text-[7px]",
+                  size === "pitch" && "text-[7px]",
+                  size === "bench" && "text-[8px]",
+                  size === "full" && "text-xs"
+                )}
+              >
+                {theme.abbr}
+              </span>
+            )}
           </div>
 
           {/* Photo */}
@@ -332,6 +363,6 @@ export function draftCardToWorldCup(player: {
     totalPoints: player.totalPoints,
     matchdayPoints: 0,
     upcomingFixture: "No fixture scheduled",
-    ownerSelectedNation: player.ownerSelectedNation,
+    managerNationAbbr: null,
   };
 }

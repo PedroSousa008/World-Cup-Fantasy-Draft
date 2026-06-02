@@ -26,7 +26,7 @@ export function BenchPanel({
   onPlayerClick,
 }: BenchPanelProps) {
   return (
-    <div className="mx-4">
+    <div className="mx-4 mb-2">
       <button
         type="button"
         onClick={onToggle}
@@ -39,14 +39,20 @@ export function BenchPanel({
 
       <div
         className={cn(
-          "overflow-hidden transition-all duration-500 ease-out",
-          open ? "mt-3 max-h-[160px] opacity-100" : "max-h-0 opacity-0"
+          "transition-[max-height,opacity,margin] duration-500 ease-out",
+          open ? "mt-3 max-h-[520px] opacity-100" : "mt-0 max-h-0 opacity-0"
         )}
       >
         <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-white/40">
           Bench · tap player to substitute
         </p>
-        <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-none scroll-contain-x snap-x snap-mandatory">
+        <div
+          className={cn(
+            "flex items-start gap-3 overflow-x-auto overflow-y-visible pb-6 pt-1",
+            "scrollbar-none scroll-contain-x snap-x snap-mandatory",
+            "pb-[max(1.5rem,env(safe-area-inset-bottom))]"
+          )}
+        >
           {benchSlots.map((slot) => {
             const player = getPlayer(slot.id);
             return (

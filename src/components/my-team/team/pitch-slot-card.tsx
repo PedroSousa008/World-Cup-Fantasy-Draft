@@ -48,6 +48,7 @@ export function PitchSlotCard({
     <FantasyPlayerCard
       player={player}
       size="pitch"
+      teamLayout
       isCaptain={isCaptain}
       isViceCaptain={isViceCaptain}
       onClick={onPlayerClick}
@@ -68,7 +69,7 @@ export function BenchSlotCard({
         type="button"
         onClick={onEmptyClick}
         className={cn(
-          "flex h-[130px] w-[96px] shrink-0 snap-start flex-col items-center justify-center gap-1 rounded-2xl",
+          "flex min-h-[200px] w-[100px] shrink-0 snap-start flex-col items-center justify-center gap-1 rounded-2xl",
           "border-2 border-dashed border-[#FFD700]/25 bg-black/20",
           "transition-all duration-300 active:scale-95"
         )}
@@ -84,6 +85,7 @@ export function BenchSlotCard({
       <FantasyPlayerCard
         player={player}
         size="bench"
+        teamLayout
         isCaptain={isCaptain}
         onClick={onPlayerClick}
       />

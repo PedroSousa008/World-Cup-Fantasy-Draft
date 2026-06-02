@@ -10,7 +10,11 @@ const FIXTURES: Record<string, { fixture: string; date: string }> = {
 };
 
 function makePlayer(
-  partial: Omit<FantasyPlayer, "matchHistory" | "isDrafted" | "motmAwards" | "upcomingFixture" | "matchDate"> & {
+  partial: Omit<
+    FantasyPlayer,
+    "matchHistory" | "isDrafted" | "motmAwards" | "upcomingFixture" | "matchDate" | "currentMatchdayPoints"
+  > & {
+    currentMatchdayPoints?: number;
     matchHistory?: FantasyPlayer["matchHistory"];
     motmAwards?: number;
     upcomingFixture?: string;
@@ -20,6 +24,7 @@ function makePlayer(
   const fx = FIXTURES[partial.nation] ?? { fixture: "TBD vs TBD", date: "TBD" };
   return {
     ...partial,
+    currentMatchdayPoints: partial.currentMatchdayPoints ?? partial.matchdayPoints ?? 0,
     matchHistory: partial.matchHistory ?? [],
     isDrafted: false,
     motmAwards: partial.motmAwards ?? 0,
