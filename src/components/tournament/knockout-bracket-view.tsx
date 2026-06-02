@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useMemo, useState } from "react";
 import { Trophy } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getNationFlag } from "@/lib/nations";
@@ -12,22 +12,20 @@ import type {
   BracketNation,
   KnockoutBracketData,
 } from "@/lib/tournament/knockout/bracket-service";
-import {
-  assignKnockoutSlotAction,
-  setKnockoutWinnerAction,
-} from "@/lib/actions/owner/knockout-bracket";
 import { MobileFullScreenModal } from "@/components/ui/mobile-full-screen-modal";
 
 interface KnockoutBracketViewProps {
   data: KnockoutBracketData;
   editable?: boolean;
-  onMutated?: () => void;
+  onAssignSlot?: (slotKey: string, nationalTeamId: string | null) => Promise<void>;
+  onSetWinner?: (matchKey: string, winnerNationalTeamId: string) => Promise<void>;
 }
 
 export function KnockoutBracketView({
   data,
   editable = false,
-  onMutated,
+  onAssignSlot,
+  onSetWinner,
 }: KnockoutBracketViewProps) {
   const slotMap = useMemo(
     () => new Map(data.slots.map((s) => [s.slotKey, s])),
@@ -103,7 +101,8 @@ export function KnockoutBracketView({
             editable={editable}
             nations={data.nations}
             align="left"
-            onMutated={onMutated}
+            onAssignSlot={onAssignSlot}
+            onSetWinner={onSetWinner}
           />
 
           <div className="flex w-[140px] shrink-0 flex-col items-center justify-center gap-6 px-2">
@@ -115,7 +114,8 @@ export function KnockoutBracketView({
                   editable={editable}
                   nations={data.nations}
                   compact
-                  onMutated={onMutated}
+                  onAssignSlot={onAssignSlot}
+                  onSetWinner={onSetWinner}
                 />
               )}
             </RoundColumn>
@@ -134,7 +134,8 @@ export function KnockoutBracketView({
             editable={editable}
             nations={data.nations}
             align="right"
-            onMutated={onMutated}
+            onAssignSlot={onAssignSlot}
+            onSetWinner={onSetWinner}
           />
         </div>
       </div>
@@ -148,14 +149,16 @@ function BracketSide({
   editable,
   nations,
   align,
-  onMutated,
+  onAssignSlot,
+  onSetWinner,
 }: {
   matches: BracketMatchState[][];
   slotMap: Map<string, BracketSlotState>;
   editable: boolean;
   nations: BracketNation[];
   align: "left" | "right";
-  onMutated?: () => void;
+  onAssignSlot?: (slotKey: string, nationalTeamId: string | null) => Promise<void>;
+  onSetWinner?: (matchKey: string, winnerNationalTeamId: string) => Promise<void>;
 }) {
   const labels = ["Round of 32", "Round of 16", "Quarter Finals", "Semi Finals"];
 
@@ -175,7 +178,8 @@ function BracketSide({
               slotMap={slotMap}
               editable={editable}
               nations={nations}
-              onMutated={onMutated}
+              onAssignSlot={onAssignSlot}
+              onSetWinner={onSetWinner}
             />
           ))}
         </RoundColumn>
@@ -209,14 +213,16 @@ function MatchPair({
   editable,
   nations,
   compact,
-  onMutated,
+  onAssignSlot,
+  onSetWinner,
 }: {
   match: BracketMatchState;
   slotMap: Map<string, BracketSlotState>;
   editable: boolean;
   nations: BracketNation[];
   compact?: boolean;
-  onMutated?: () => void;
+  onAssignSlot?: (slotKey: string, nationalTeamId: string | null) => Promise<void>;
+  onSetWinner?: (matchKey: string, winnerNationalTeamId: string) => Promise<void>;
 }) {
   const home = slotMap.get(match.homeSlot);
   const away = slotMap.get(match.awaySlot);
@@ -279,14 +285,16 @@ function MatchPair({
           nations={nations}
           currentId={activeSlot ? slotMap.get(activeSlot)?.nationalTeamId : null}
           onPick={async (id) => {
-            if (activeSlot) await assignKnockoutSlotAction(activeSlot, id);
-            setPickerOpen(false);
-            onMutated?.();
+            if (activeSlot && onAssignSlot) {
+              setPickerOpen(false);
+              await onAssignSlot(activeSlot, id);
+            }
           }}
           onClear={async () => {
-            if (activeSlot) await assignKnockoutSlotAction(activeSlot, null);
-            setPickerOpen(false);
-            onMutated?.();
+            if (activeSlot && onAssignSlot) {
+              setPickerOpen(false);
+              await onAssignSlot(activeSlot, null);
+            }
           }}
         />
       )}
@@ -299,9 +307,8 @@ function MatchPair({
           home={home}
           away={away}
           onPick={async (winnerId) => {
-            await setKnockoutWinnerAction(match.matchKey, winnerId);
             setWinnerOpen(false);
-            onMutated?.();
+            if (onSetWinner) await onSetWinner(match.matchKey, winnerId);
           }}
         />
       )}
@@ -465,10 +472,8 @@ function WinnerPickerModal({
   match: BracketMatchState;
   home?: BracketSlotState;
   away?: BracketSlotState;
-  onPick: (winnerId: string) => void;
+  onPick: (winnerId: string) => void | Promise<void>;
 }) {
-  const [pending, startTransition] = useTransition();
-
   if (!home?.nation || !away?.nation) return null;
 
   return (
@@ -483,10 +488,7 @@ function WinnerPickerModal({
           <button
             key={side.nationalTeamId!}
             type="button"
-            disabled={pending}
-            onClick={() =>
-              startTransition(() => onPick(side.nationalTeamId!))
-            }
+            onClick={() => void onPick(side.nationalTeamId!)}
             className="flex items-center gap-3 rounded-2xl bg-white/5 p-4 ring-1 ring-white/10 active:scale-[0.98]"
           >
             <span className="text-3xl">
