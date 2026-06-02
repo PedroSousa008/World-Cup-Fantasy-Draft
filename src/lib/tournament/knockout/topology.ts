@@ -196,32 +196,33 @@ export function getMatchForSlot(slotKey: string): KnockoutMatchDef | undefined {
   return KNOCKOUT_MATCHES.find((m) => m.homeSlot === slotKey || m.awaySlot === slotKey);
 }
 
-/** Group feeder matches that feed into a single downstream match (for tree layout). */
-export function getBracketTreeGroups(side: "left" | "right"): {
+export interface BracketSideRoundColumn {
   round: KnockoutRound;
   label: string;
-  groups: { match: KnockoutMatchDef; feederMatches: KnockoutMatchDef[] }[];
-}[] {
-  const sideMatches = KNOCKOUT_MATCHES.filter((m) => m.side === side);
-  const byKey = new Map(sideMatches.map((m) => [m.key, m]));
+  matchKeys: string[];
+  /** Single finalist slot key (left = final-0, right = final-1) */
+  finalistSlotKey?: string;
+}
 
-  const rounds: { round: KnockoutRound; label: string; keys: string[] }[] = [
-    { round: "ROUND_OF_32", label: "Round of 32", keys: sideMatches.filter((m) => m.round === "ROUND_OF_32").map((m) => m.key) },
-    { round: "ROUND_OF_16", label: "Round of 16", keys: sideMatches.filter((m) => m.round === "ROUND_OF_16").map((m) => m.key) },
-    { round: "QUARTER_FINALS", label: "Quarter Finals", keys: sideMatches.filter((m) => m.round === "QUARTER_FINALS").map((m) => m.key) },
-    { round: "SEMI_FINALS", label: "Semi Finals", keys: sideMatches.filter((m) => m.round === "SEMI_FINALS").map((m) => m.key) },
+/** One column per round — each match appears exactly once (no feeder duplication). */
+export function getBracketSideColumns(side: "left" | "right"): BracketSideRoundColumn[] {
+  const sideMatches = KNOCKOUT_MATCHES.filter((m) => m.side === side).sort(
+    (a, b) => a.order - b.order
+  );
+
+  const byRound = (round: KnockoutRound) =>
+    sideMatches.filter((m) => m.round === round).map((m) => m.key);
+
+  return [
+    { round: "ROUND_OF_32", label: "Round of 32", matchKeys: byRound("ROUND_OF_32") },
+    { round: "ROUND_OF_16", label: "Round of 16", matchKeys: byRound("ROUND_OF_16") },
+    { round: "QUARTER_FINALS", label: "Quarter Finals", matchKeys: byRound("QUARTER_FINALS") },
+    { round: "SEMI_FINALS", label: "Semi Finals", matchKeys: byRound("SEMI_FINALS") },
+    {
+      round: "FINAL",
+      label: "Finalist",
+      matchKeys: [],
+      finalistSlotKey: side === "left" ? "final-0" : "final-1",
+    },
   ];
-
-  return rounds.map(({ round, label, keys }) => ({
-    round,
-    label,
-    groups: keys.map((key) => {
-      const match = byKey.get(key)!;
-      const feeders =
-        match.feederHomeMatchKey && match.feederAwayMatchKey
-          ? [byKey.get(match.feederHomeMatchKey)!, byKey.get(match.feederAwayMatchKey)!]
-          : [];
-      return { match, feederMatches: feeders };
-    }),
-  }));
 }
