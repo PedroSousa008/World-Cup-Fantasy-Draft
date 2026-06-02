@@ -38,5 +38,5 @@ export const DEFAULT_POSITION_SCORING: Record<
   FWD: { GOAL: 4 },
 };
 
-export const MATCHDAY_COUNT = 3;
+export const MATCHDAY_COUNT = 8;
 export const MIN_LEAGUE_TABLE_ROWS = 10;

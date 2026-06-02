@@ -65,6 +65,8 @@ export async function saveMatchResultAction(
   });
   if (!match) return { ok: false, error: "Match not found." };
 
+  const wasKnockout = Boolean(match.knockoutMatchKey);
+
   const teamIds = new Set([match.homeTeamId, match.awayTeamId]);
   for (const ev of events) {
     if (!EVENT_TYPES.has(ev.eventType)) {
@@ -112,6 +114,13 @@ export async function saveMatchResultAction(
       },
     });
   });
+
+  if (wasKnockout) {
+    const { onKnockoutMatchSaved } = await import(
+      "@/lib/tournament/knockout/bracket-service"
+    );
+    await onKnockoutMatchSaved(matchId);
+  }
 
   revalidateTournament();
   return { ok: true };

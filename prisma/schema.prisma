@@ -218,6 +218,7 @@ model NationalTeam {
   awayMatches        Match[]              @relation("AwayTeam")
   progressionBonuses NationProgression[]
   standingOverride   GroupStandingOverride?
+  knockoutSlots      KnockoutSlot[]
 }
 
 /// Owner manual correction for group tables (overrides auto-calculated values).
@@ -274,9 +275,11 @@ model Match {
   awayScore       Int?
   manOfTheMatchId String?
   manOfTheMatch   Player?     @relation("MotmPlayer", fields: [manOfTheMatchId], references: [id])
-  bettingOpen     Boolean     @default(false)
-  createdAt       DateTime    @default(now())
-  updatedAt       DateTime    @updatedAt
+  bettingOpen        Boolean     @default(false)
+  knockoutMatchKey   String?     @unique
+  knockoutWinnerId   String?
+  createdAt          DateTime    @default(now())
+  updatedAt          DateTime    @updatedAt
 
   events MatchEvent[]
   bets   Bet[]
@@ -284,6 +287,28 @@ model Match {
   @@index([matchday])
   @@index([groupName])
   @@index([scheduledAt])
+  @@index([stage])
+}
+
+enum KnockoutRound {
+  ROUND_OF_32
+  ROUND_OF_16
+  QUARTER_FINALS
+  SEMI_FINALS
+  FINAL
+  CHAMPION
+}
+
+/// Team slot in the knockout bracket tree.
+model KnockoutSlot {
+  id             String        @id @default(cuid())
+  slotKey        String        @unique
+  round          KnockoutRound
+  side           String?
+  nationalTeamId String?
+  nationalTeam   NationalTeam? @relation(fields: [nationalTeamId], references: [id])
+  eliminated     Boolean       @default(false)
+  updatedAt      DateTime      @updatedAt
 }
 
 model MatchEvent {
@@ -371,6 +396,7 @@ model MatchdaySubstitution {
 }
 
 enum ProgressionStage {
+  LAST_32
   LAST_16
   QUARTER_FINALS
   SEMI_FINALS

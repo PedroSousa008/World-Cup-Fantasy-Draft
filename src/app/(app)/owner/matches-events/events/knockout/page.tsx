@@ -1,10 +1,12 @@
-import { OwnerKnockoutPanel } from "@/components/owner/owner-knockout-panel";
-import { getProgressionData } from "@/lib/actions/owner/progression";
+import { KnockoutBracketView } from "@/components/tournament/knockout-bracket-view";
+import { getOwnerKnockoutBracketData } from "@/lib/actions/owner/knockout-bracket";
+import { recomputeKnockoutBracket } from "@/lib/tournament/knockout/bracket-service";
 
 export const dynamic = "force-dynamic";
 
 export default async function OwnerEventsKnockoutPage() {
-  const nations = await getProgressionData();
+  await recomputeKnockoutBracket();
+  const data = await getOwnerKnockoutBracketData();
 
-  return <OwnerKnockoutPanel nations={nations} />;
+  return <KnockoutBracketView data={data} editable />;
 }

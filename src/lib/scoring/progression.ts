@@ -3,6 +3,7 @@ import type { PlayerPosition } from "@prisma/client";
 
 /** Bonus points per player when nation reaches stage (one-time each). */
 export const PROGRESSION_STAGE_POINTS: Record<ProgressionStage, number> = {
+  LAST_32: 1,
   LAST_16: 3,
   QUARTER_FINALS: 4,
   SEMI_FINALS: 5,
@@ -11,6 +12,7 @@ export const PROGRESSION_STAGE_POINTS: Record<ProgressionStage, number> = {
 };
 
 export const PROGRESSION_STAGE_ORDER: ProgressionStage[] = [
+  "LAST_32",
   "LAST_16",
   "QUARTER_FINALS",
   "SEMI_FINALS",
@@ -19,6 +21,7 @@ export const PROGRESSION_STAGE_ORDER: ProgressionStage[] = [
 ];
 
 export const PROGRESSION_STAGE_LABELS: Record<ProgressionStage, string> = {
+  LAST_32: "Last 32",
   LAST_16: "Last 16",
   QUARTER_FINALS: "Quarter Finals",
   SEMI_FINALS: "Semi Finals",
