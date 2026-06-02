@@ -5,6 +5,7 @@ import { writeFile, mkdir } from "node:fs/promises";
 import path from "node:path";
 import { PlayerPosition } from "@prisma/client";
 import { prisma } from "@/lib/db/prisma";
+import { UNASSIGNED_SLOT_ORDER } from "@/lib/squad/slot-keys";
 import { buildPlayerPhotoPath } from "@/lib/players/photo";
 import { isValidPlayerPosition } from "@/lib/players/types";
 import type { OwnerActionResult } from "@/lib/actions/owner/helpers";
@@ -147,6 +148,7 @@ export async function assignPlayerToUserAction(input: {
       fantasyTeamId: team.id,
       playerId: player.id,
       isStarter: false,
+      slotOrder: UNASSIGNED_SLOT_ORDER,
     },
   });
 

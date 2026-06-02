@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   type FormationId,
   getFormation,
@@ -12,22 +12,88 @@ import {
   validateSquad,
   computeSquadPoints,
 } from "@/lib/squad/squad-utils";
-import {
-  buildPlayersMap,
-  getEmptyAssignments,
-  getOwnerAssignedPlayers,
-} from "@/lib/mock/available-players";
+import type { SquadInitialData } from "@/lib/squad/get-squad-data";
+import { FORMATION_STORAGE_KEY } from "@/lib/squad/slot-keys";
+import { saveSquadLineupAction } from "@/lib/actions/squad";
+import { getEmptyAssignments } from "@/lib/squad/empty-assignments";
 
-export function useSquadManager(teamName: string) {
-  const assignedPool = useMemo(() => getOwnerAssignedPlayers(teamName), [teamName]);
+function buildPlayersMap(assignedPlayers: FantasyPlayer[]): Record<string, FantasyPlayer> {
+  const map: Record<string, FantasyPlayer> = {};
+  for (const p of assignedPlayers) map[p.id] = p;
+  return map;
+}
 
-  const [formationId, setFormationId] = useState<FormationId>("4-3-3");
-  const [players] = useState<Record<string, FantasyPlayer>>(() => buildPlayersMap(assignedPool));
-  const [assignments, setAssignments] = useState<Record<string, string | null>>(getEmptyAssignments);
-  const [captainId, setCaptainId] = useState<string | null>(null);
-  const [viceCaptainId, setViceCaptainId] = useState<string | null>(null);
+function readStoredFormation(fallback: FormationId): FormationId {
+  if (typeof window === "undefined") return fallback;
+  try {
+    const raw = localStorage.getItem(FORMATION_STORAGE_KEY);
+    if (raw && ["3-4-3", "3-5-2", "4-3-3", "4-4-2", "4-5-1", "5-3-2", "5-4-1"].includes(raw)) {
+      return raw as FormationId;
+    }
+  } catch {
+    /* ignore */
+  }
+  return fallback;
+}
+
+export function useSquadManager(initial: SquadInitialData) {
+  const assignedPool = initial.assignedPlayers;
+
+  const [formationId, setFormationId] = useState<FormationId>(() =>
+    readStoredFormation(initial.formationId)
+  );
+  const [players, setPlayers] = useState<Record<string, FantasyPlayer>>(() =>
+    buildPlayersMap(assignedPool)
+  );
+  const [assignments, setAssignments] = useState<Record<string, string | null>>(() => {
+    const fid = readStoredFormation(initial.formationId);
+    const base = getEmptyAssignments(fid);
+    return { ...base, ...initial.assignments };
+  });
+  const [captainId, setCaptainId] = useState<string | null>(initial.captainId);
+  const [viceCaptainId, setViceCaptainId] = useState<string | null>(initial.viceCaptainId);
   const [benchOpen, setBenchOpen] = useState(false);
   const [pickerSlotId, setPickerSlotId] = useState<string | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
+
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    setPlayers(buildPlayersMap(assignedPool));
+    const validIds = new Set(assignedPool.map((p) => p.id));
+    setAssignments((prev) => {
+      const next: Record<string, string | null> = { ...prev };
+      for (const [slotId, pid] of Object.entries(next)) {
+        if (pid && !validIds.has(pid)) next[slotId] = null;
+      }
+      return next;
+    });
+    setCaptainId((c) => (c && validIds.has(c) ? c : null));
+    setViceCaptainId((v) => (v && validIds.has(v) ? v : null));
+  }, [assignedPool]);
+
+  const persistLineup = useCallback(
+    (
+      nextAssignments: Record<string, string | null>,
+      nextCaptain: string | null,
+      nextVice: string | null,
+      nextFormation: FormationId
+    ) => {
+      if (saveTimer.current) clearTimeout(saveTimer.current);
+      saveTimer.current = setTimeout(() => {
+        void saveSquadLineupAction({
+          formationId: nextFormation,
+          assignments: nextAssignments,
+          captainId: nextCaptain,
+          viceCaptainId: nextVice,
+        }).then((res) => {
+          if (!res.ok) setSaveError(res.error);
+          else setSaveError(null);
+        });
+      }, 400);
+    },
+    []
+  );
 
   const formation = getFormation(formationId);
   const slots = useMemo(() => buildAllSlots(formation), [formation]);
@@ -65,53 +131,93 @@ export function useSquadManager(teamName: string) {
           }
         }
 
+        for (const slot of buildAllSlots(next)) {
+          if (!(slot.id in nextAssignments)) nextAssignments[slot.id] = null;
+        }
+
+        persistLineup(nextAssignments, captainId, viceCaptainId, id);
         return nextAssignments;
       });
       setFormationId(id);
+      try {
+        localStorage.setItem(FORMATION_STORAGE_KEY, id);
+      } catch {
+        /* ignore */
+      }
     },
-    [formationId]
+    [formationId, captainId, viceCaptainId, persistLineup]
   );
 
-  const assignPlayer = useCallback((slotId: string, playerId: string) => {
-    setAssignments((prev) => {
-      const next = { ...prev };
-      const existingSlot = Object.entries(next).find(([, id]) => id === playerId)?.[0];
-      const currentInSlot = next[slotId];
-      if (existingSlot) next[existingSlot] = currentInSlot;
-      next[slotId] = playerId;
-      return next;
-    });
-    setPickerSlotId(null);
-  }, []);
+  const assignPlayer = useCallback(
+    (slotId: string, playerId: string) => {
+      setAssignments((prev) => {
+        const next = { ...prev };
+        const existingSlot = Object.entries(next).find(([, id]) => id === playerId)?.[0];
+        const currentInSlot = next[slotId];
+        if (existingSlot) next[existingSlot] = currentInSlot;
+        next[slotId] = playerId;
+        persistLineup(next, captainId, viceCaptainId, formationId);
+        return next;
+      });
+      setPickerSlotId(null);
+    },
+    [captainId, viceCaptainId, formationId, persistLineup]
+  );
 
-  const removePlayer = useCallback((slotId: string) => {
-    setAssignments((prev) => {
-      const removedId = prev[slotId];
-      if (removedId) {
-        setCaptainId((c) => (c === removedId ? null : c));
-        setViceCaptainId((v) => (v === removedId ? null : v));
-      }
-      return { ...prev, [slotId]: null };
-    });
-  }, []);
+  const removePlayer = useCallback(
+    (slotId: string) => {
+      const removedId = assignments[slotId];
+      const next = { ...assignments, [slotId]: null };
+      const cap = removedId && captainId === removedId ? null : captainId;
+      const vice = removedId && viceCaptainId === removedId ? null : viceCaptainId;
+      setAssignments(next);
+      setCaptainId(cap);
+      setViceCaptainId(vice);
+      persistLineup(next, cap, vice, formationId);
+    },
+    [assignments, captainId, viceCaptainId, formationId, persistLineup]
+  );
 
-  const substitutePlayers = useCallback((fromSlotId: string, toSlotId: string) => {
-    setAssignments((prev) => {
-      const fromPlayer = prev[fromSlotId];
-      const toPlayer = prev[toSlotId];
-      return { ...prev, [fromSlotId]: toPlayer ?? null, [toSlotId]: fromPlayer ?? null };
-    });
-  }, []);
+  const substitutePlayers = useCallback(
+    (fromSlotId: string, toSlotId: string) => {
+      setAssignments((prev) => {
+        const fromPlayer = prev[fromSlotId];
+        const toPlayer = prev[toSlotId];
+        const next = { ...prev, [fromSlotId]: toPlayer ?? null, [toSlotId]: fromPlayer ?? null };
+        persistLineup(next, captainId, viceCaptainId, formationId);
+        return next;
+      });
+    },
+    [captainId, viceCaptainId, formationId, persistLineup]
+  );
 
-  const setCaptain = useCallback((playerId: string) => {
-    setCaptainId(playerId);
-    if (viceCaptainId === playerId) setViceCaptainId(null);
-  }, [viceCaptainId]);
+  const setCaptain = useCallback(
+    (playerId: string) => {
+      setCaptainId(playerId);
+      if (viceCaptainId === playerId) setViceCaptainId(null);
+      persistLineup(
+        assignments,
+        playerId,
+        viceCaptainId === playerId ? null : viceCaptainId,
+        formationId
+      );
+    },
+    [assignments, viceCaptainId, formationId, persistLineup]
+  );
 
-  const setViceCaptain = useCallback((playerId: string) => {
-    setViceCaptainId(playerId);
-    if (captainId === playerId) setCaptainId(null);
-  }, [captainId]);
+  const setViceCaptain = useCallback(
+    (playerId: string) => {
+      setViceCaptainId(playerId);
+      if (captainId === playerId) setCaptainId(null);
+      persistLineup(
+        assignments,
+        captainId === playerId ? null : captainId,
+        playerId,
+        formationId
+      );
+    },
+    [assignments, captainId, formationId, persistLineup]
+  );
 
   const getSlotPlayer = useCallback(
     (slotId: string) => {
@@ -184,6 +290,7 @@ export function useSquadManager(teamName: string) {
     setPickerSlotId,
     validation,
     totalPoints,
+    saveError,
     changeFormation,
     assignPlayer,
     removePlayer,

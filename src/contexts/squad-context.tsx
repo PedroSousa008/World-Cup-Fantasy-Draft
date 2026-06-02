@@ -2,17 +2,18 @@
 
 import { createContext, useContext, type ReactNode } from "react";
 import { useSquadManager, type SquadManager } from "@/hooks/use-squad-manager";
+import type { SquadInitialData } from "@/lib/squad/get-squad-data";
 
 const SquadContext = createContext<SquadManager | null>(null);
 
 export function SquadProvider({
-  teamName,
+  initial,
   children,
 }: {
-  teamName: string;
+  initial: SquadInitialData;
   children: ReactNode;
 }) {
-  const squad = useSquadManager(teamName);
+  const squad = useSquadManager(initial);
   return <SquadContext.Provider value={squad}>{children}</SquadContext.Provider>;
 }
 

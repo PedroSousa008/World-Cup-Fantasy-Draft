@@ -5,15 +5,13 @@ import {
   ArrowLeft,
   ArrowLeftRight,
   Crown,
-  Search,
-  UserPlus,
   User,
   Trash2,
 } from "lucide-react";
 import { BottomSheet } from "@/components/ui/bottom-sheet";
 import { Button } from "@/components/ui/button";
 import { FantasyPlayerCard } from "@/components/player/fantasy-player-card";
-import { slotLabel } from "@/lib/squad/formations";
+import { getPositionLabel } from "@/lib/players/types";
 import type { SquadSlot } from "@/lib/squad/formations";
 import type { FantasyPlayer } from "@/lib/squad/squad-utils";
 
@@ -27,8 +25,6 @@ interface SlotActionSheetProps {
   isCaptain: boolean;
   isViceCaptain: boolean;
   substitutionTargets: { slot: SquadSlot; player: FantasyPlayer }[];
-  onAddPlayer: () => void;
-  onSearchPlayer: () => void;
   onViewProfile: () => void;
   onSubstitution: (targetSlotId: string) => void;
   onMakeCaptain: () => void;
@@ -44,8 +40,6 @@ export function SlotActionSheet({
   isCaptain,
   isViceCaptain,
   substitutionTargets,
-  onAddPlayer,
-  onSearchPlayer,
   onViewProfile,
   onSubstitution,
   onMakeCaptain,
@@ -59,24 +53,16 @@ export function SlotActionSheet({
     onClose();
   };
 
-  if (!slot) return null;
-
-  const slotTitle = player
-    ? player.name
-    : slot.zone === "bench"
-      ? "Bench Slot"
-      : slotLabel(slot.position, slot.zone);
-
-  const zoneLabel = slot.zone === "starter" ? "Starting XI" : "Bench";
+  if (!slot || !player) return null;
 
   return (
     <BottomSheet
       open={open}
       onClose={handleClose}
-      title={view === "substitution" ? "Substitution" : slotTitle}
+      title={view === "substitution" ? "Substitute" : player.name}
       className="z-[105]"
     >
-      {view === "substitution" && player ? (
+      {view === "substitution" ? (
         <SubstitutionList
           player={player}
           slot={slot}
@@ -87,10 +73,11 @@ export function SlotActionSheet({
             handleClose();
           }}
         />
-      ) : player ? (
+      ) : (
         <FilledSlotActions
           player={player}
-          zoneLabel={zoneLabel}
+          slot={slot}
+          zoneLabel={slot.zone === "starter" ? "Starting XI" : "Bench"}
           isCaptain={isCaptain}
           isViceCaptain={isViceCaptain}
           hasSubstitutionTargets={substitutionTargets.length > 0}
@@ -113,57 +100,14 @@ export function SlotActionSheet({
           }}
           onCancel={handleClose}
         />
-      ) : (
-        <EmptySlotActions
-          slot={slot}
-          onAddPlayer={() => {
-            onAddPlayer();
-            handleClose();
-          }}
-          onSearchPlayer={() => {
-            onSearchPlayer();
-            handleClose();
-          }}
-          onCancel={handleClose}
-        />
       )}
     </BottomSheet>
   );
 }
 
-function EmptySlotActions({
-  slot,
-  onAddPlayer,
-  onSearchPlayer,
-  onCancel,
-}: {
-  slot: SquadSlot;
-  onAddPlayer: () => void;
-  onSearchPlayer: () => void;
-  onCancel: () => void;
-}) {
-  const label =
-    slot.zone === "bench" ? "Bench" : slotLabel(slot.position, slot.zone);
-
-  return (
-    <div className="space-y-2">
-      <p className="mb-4 text-sm text-[#081120]/50">
-        {slot.zone === "starter" ? "Starting XI" : "Bench"} · {label}
-      </p>
-
-      <ActionButton icon={UserPlus} label="Assign Player" onClick={onAddPlayer} primary />
-      <ActionButton icon={UserPlus} label="Add Player" onClick={onAddPlayer} />
-      <ActionButton icon={Search} label="Search Player" onClick={onSearchPlayer} />
-
-      <Button variant="outline" className="mt-2 h-12 w-full border-[#081120]/15" onClick={onCancel}>
-        Cancel
-      </Button>
-    </div>
-  );
-}
-
 function FilledSlotActions({
   player,
+  slot,
   zoneLabel,
   isCaptain,
   isViceCaptain,
@@ -176,6 +120,7 @@ function FilledSlotActions({
   onCancel,
 }: {
   player: FantasyPlayer;
+  slot: SquadSlot;
   zoneLabel: string;
   isCaptain: boolean;
   isViceCaptain: boolean;
@@ -190,14 +135,24 @@ function FilledSlotActions({
   return (
     <div className="space-y-3">
       <div className="flex justify-center pb-2">
-        <FantasyPlayerCard player={player} size="bench" isCaptain={isCaptain} isViceCaptain={isViceCaptain} />
+        <FantasyPlayerCard
+          player={player}
+          size="bench"
+          isCaptain={isCaptain}
+          isViceCaptain={isViceCaptain}
+        />
       </div>
       <p className="text-center text-xs text-[#081120]/45">
-        {zoneLabel} · {player.position}
+        {zoneLabel} · {getPositionLabel(player.position)}
       </p>
 
       {hasSubstitutionTargets && (
-        <ActionButton icon={ArrowLeftRight} label="Substitution" onClick={onSubstitution} primary />
+        <ActionButton
+          icon={ArrowLeftRight}
+          label="Substitute"
+          onClick={onSubstitution}
+          primary
+        />
       )}
       <ActionButton icon={User} label="View Profile" onClick={onViewProfile} />
       <ActionButton
@@ -212,7 +167,12 @@ function FilledSlotActions({
         onClick={onMakeViceCaptain}
         disabled={isViceCaptain}
       />
-      <ActionButton icon={Trash2} label="Remove Player" onClick={onRemove} danger />
+      {slot.zone === "starter" && (
+        <ActionButton icon={Trash2} label="Remove from lineup" onClick={onRemove} danger />
+      )}
+      {slot.zone === "bench" && (
+        <ActionButton icon={Trash2} label="Remove from bench" onClick={onRemove} danger />
+      )}
 
       <Button variant="outline" className="h-12 w-full border-[#081120]/15" onClick={onCancel}>
         Close
@@ -235,14 +195,7 @@ function SubstitutionList({
   onSelect: (targetSlotId: string) => void;
 }) {
   const isStarter = slot.zone === "starter";
-  const positionLabel =
-    player.position === "GK"
-      ? "goalkeeper"
-      : player.position === "DEF"
-        ? "defender"
-        : player.position === "MID"
-          ? "midfielder"
-          : "attacker";
+  const positionLabel = getPositionLabel(player.position).toLowerCase();
 
   return (
     <div className="space-y-3">
@@ -256,11 +209,13 @@ function SubstitutionList({
       </button>
 
       <p className="text-sm text-[#081120]/60">
-        Swap {player.name} with a {isStarter ? "bench" : "starting"} {positionLabel}
+        Swap {player.name} with a {isStarter ? "bench" : "starting XI"} {positionLabel}
       </p>
 
       {targets.length === 0 ? (
-        <p className="py-6 text-center text-sm text-[#081120]/40">No players available to swap.</p>
+        <p className="py-6 text-center text-sm text-[#081120]/40">
+          No {positionLabel}s available to swap.
+        </p>
       ) : (
         targets.map(({ slot: targetSlot, player: targetPlayer }) => (
           <button

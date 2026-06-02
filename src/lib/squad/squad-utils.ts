@@ -3,6 +3,7 @@ import type { PlayerPosition, MatchStatus } from "@/lib/mock/my-team-data";
 export interface FantasyPlayer {
   id: string;
   name: string;
+  photoUrl?: string;
   position: PlayerPosition;
   nation: string;
   club: string;
@@ -56,7 +57,7 @@ export function validateSquad(
   for (const pos of ["GK", "DEF", "MID", "FWD"] as const) {
     const diff = limits[pos] - counts[pos];
     if (diff > 0) {
-      warnings.push(`Select ${diff} more ${pos === "GK" ? "goalkeeper" : pos === "DEF" ? "defender" : pos === "MID" ? "midfielder" : "forward"}${diff > 1 ? "s" : ""}.`);
+      warnings.push(`Select ${diff} more ${pos === "GK" ? "goalkeeper" : pos === "DEF" ? "defender" : pos === "MID" ? "midfielder" : "attacker"}${diff > 1 ? "s" : ""}.`);
     }
     if (counts[pos] > limits[pos]) {
       warnings.push(`Too many ${pos} players selected.`);

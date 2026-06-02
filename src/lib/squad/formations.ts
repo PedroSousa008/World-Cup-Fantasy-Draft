@@ -78,12 +78,12 @@ export function buildAllSlots(formation: FormationShape): SquadSlot[] {
 }
 
 export function slotLabel(position: string, zone: SlotZone): string {
-  if (zone === "bench") return "Add Player";
+  if (zone === "bench") return "Bench";
   const map: Record<string, string> = {
-    GK: "Add Goalkeeper",
-    DEF: "Add Defender",
-    MID: "Add Midfielder",
-    FWD: "Add Forward",
+    GK: "Goalkeeper",
+    DEF: "Defender",
+    MID: "Midfielder",
+    FWD: "Attacker",
   };
-  return map[position] ?? "Add Player";
+  return map[position] ?? "Player";
 }

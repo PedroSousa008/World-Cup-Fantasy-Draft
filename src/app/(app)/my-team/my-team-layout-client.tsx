@@ -1,6 +1,7 @@
 "use client";
 
 import { SquadProvider } from "@/contexts/squad-context";
+import type { SquadInitialData } from "@/lib/squad/get-squad-data";
 import { DraftDataProvider } from "@/contexts/draft-data-context";
 import { RankingsDataProvider } from "@/contexts/rankings-data-context";
 import { MyTeamTabsProvider } from "@/contexts/my-team-tabs-context";
@@ -9,6 +10,7 @@ import { MY_TEAM_TABS, getDefaultTab } from "@/lib/navigation";
 
 interface MyTeamLayoutClientProps {
   teamName: string;
+  squadInitial: SquadInitialData;
   children: React.ReactNode;
 }
 
@@ -18,12 +20,21 @@ function initialTabFromPath(pathname: string): string {
   return match?.slug ?? getDefaultTab(MY_TEAM_TABS);
 }
 
-export function MyTeamLayoutClient({ teamName, children }: MyTeamLayoutClientProps) {
+export function MyTeamLayoutClient({
+  squadInitial,
+  children,
+}: MyTeamLayoutClientProps) {
   const pathname = usePathname();
   const initialTab = initialTabFromPath(pathname);
 
   return (
-    <SquadProvider teamName={teamName}>
+    <SquadProvider
+      key={squadInitial.assignedPlayers
+        .map((p) => p.id)
+        .sort()
+        .join(",")}
+      initial={squadInitial}
+    >
       <RankingsDataProvider>
         <DraftDataProvider>
           <MyTeamTabsProvider initialTab={initialTab}>{children}</MyTeamTabsProvider>

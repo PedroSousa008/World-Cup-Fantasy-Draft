@@ -74,7 +74,7 @@ export function BenchSlotCard({
         )}
       >
         <span className="text-xl text-[#FFD700]/40">+</span>
-        <span className="text-[9px] font-semibold text-white/40">Add Player</span>
+        <span className="text-[9px] font-semibold text-white/40">Bench</span>
       </button>
     );
   }
