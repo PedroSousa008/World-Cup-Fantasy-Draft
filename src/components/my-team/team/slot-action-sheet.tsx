@@ -110,14 +110,12 @@ export function SlotActionSheet({
           </div>
 
           <div className="flex flex-col gap-2">
-            {substitutionTargets.length > 0 && (
-              <ActionButton
-                icon={ArrowLeftRight}
-                label="Substitute"
-                onClick={() => setView("substitution")}
-                primary
-              />
-            )}
+            <ActionButton
+              icon={ArrowLeftRight}
+              label="Substitute"
+              onClick={() => setView("substitution")}
+              primary
+            />
             <ActionButton icon={User} label="View Profile" onClick={onViewProfile} />
             <ActionButton
               icon={Crown}
@@ -178,7 +176,7 @@ function SubstitutionList({
 
       {targets.length === 0 ? (
         <p className="py-6 text-center text-sm text-white/40">
-          No {positionLabel}s available to swap.
+          No valid substitutions available.
         </p>
       ) : (
         <div className="flex flex-col gap-2">

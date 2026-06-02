@@ -15,6 +15,7 @@ const EVENT_TYPES = new Set<string>([
   SCORING_EVENT_TYPES.RED_CARD,
   SCORING_EVENT_TYPES.OWN_GOAL,
   SCORING_EVENT_TYPES.PENALTY_MISS,
+  SCORING_EVENT_TYPES.PENALTY_SAVE,
 ]);
 
 const matchEventSchema = z.object({
@@ -38,7 +39,10 @@ function revalidateTournament() {
   revalidatePath("/calendar/calendar");
   revalidatePath("/calendar/games");
   revalidatePath("/calendar/table");
+  revalidatePath("/calendar/table/group-stage");
+  revalidatePath("/calendar/table/knockout-stage");
   revalidatePath("/owner/matches");
+  revalidatePath("/owner/matches-events");
   revalidatePath("/my-team");
   revalidatePath("/bets");
 }

@@ -38,6 +38,10 @@ function readStoredFormation(fallback: FormationId): FormationId {
 
 export function useSquadManager(initial: SquadInitialData) {
   const assignedPool = initial.assignedPlayers;
+  const playerNationLocked = initial.playerNationLocked;
+  const [promotedPlayerIds, setPromotedPlayerIds] = useState<string[]>(
+    initial.promotedPlayerIds
+  );
 
   const [formationId, setFormationId] = useState<FormationId>(() =>
     readStoredFormation(initial.formationId)
@@ -77,22 +81,25 @@ export function useSquadManager(initial: SquadInitialData) {
       nextAssignments: Record<string, string | null>,
       nextCaptain: string | null,
       nextVice: string | null,
-      nextFormation: FormationId
+      nextFormation: FormationId,
+      nextPromoted?: string[]
     ) => {
       if (saveTimer.current) clearTimeout(saveTimer.current);
+      const promotedToSave = nextPromoted ?? promotedPlayerIds;
       saveTimer.current = setTimeout(() => {
         void saveSquadLineupAction({
           formationId: nextFormation,
           assignments: nextAssignments,
           captainId: nextCaptain,
           viceCaptainId: nextVice,
+          promotedPlayerIds: promotedToSave,
         }).then((res) => {
           if (!res.ok) setSaveError(res.error);
           else setSaveError(null);
         });
       }, 400);
     },
-    []
+    [promotedPlayerIds]
   );
 
   const formation = getFormation(formationId);
@@ -180,15 +187,37 @@ export function useSquadManager(initial: SquadInitialData) {
 
   const substitutePlayers = useCallback(
     (fromSlotId: string, toSlotId: string) => {
+      const fromSlot = slots.find((s) => s.id === fromSlotId);
+      const toSlot = slots.find((s) => s.id === toSlotId);
+      const inPid = assignments[toSlotId];
+      const isXiBenchSwap =
+        fromSlot?.zone === "starter" && toSlot?.zone === "bench" && inPid;
+      const nextPromoted =
+        isXiBenchSwap && !promotedPlayerIds.includes(inPid)
+          ? [...promotedPlayerIds, inPid]
+          : promotedPlayerIds;
+
+      if (isXiBenchSwap) setPromotedPlayerIds(nextPromoted);
+
       setAssignments((prev) => {
         const fromPlayer = prev[fromSlotId];
         const toPlayer = prev[toSlotId];
-        const next = { ...prev, [fromSlotId]: toPlayer ?? null, [toSlotId]: fromPlayer ?? null };
-        persistLineup(next, captainId, viceCaptainId, formationId);
+        const next = {
+          ...prev,
+          [fromSlotId]: toPlayer ?? null,
+          [toSlotId]: fromPlayer ?? null,
+        };
+        persistLineup(
+          next,
+          captainId,
+          viceCaptainId,
+          formationId,
+          isXiBenchSwap ? nextPromoted : undefined
+        );
         return next;
       });
     },
-    [captainId, viceCaptainId, formationId, persistLineup]
+    [slots, assignments, captainId, viceCaptainId, formationId, persistLineup, promotedPlayerIds]
   );
 
   const setCaptain = useCallback(
@@ -250,11 +279,16 @@ export function useSquadManager(initial: SquadInitialData) {
           player: getSlotPlayer(s.id),
         }))
         .filter(
-          (t): t is { slot: (typeof slots)[0]; player: FantasyPlayer } =>
-            t.player !== null && t.player.position === position
+          (t): t is { slot: (typeof slots)[0]; player: FantasyPlayer } => {
+            if (t.player === null || t.player.position !== position) return false;
+            if (oppositeZone === "starter") return true;
+            if (playerNationLocked[t.player.id]) return false;
+            if (promotedPlayerIds.includes(t.player.id)) return false;
+            return true;
+          }
         );
     },
-    [slots, getSlotPlayer]
+    [slots, getSlotPlayer, playerNationLocked, promotedPlayerIds]
   );
 
   const availableForSlot = useCallback(
@@ -301,6 +335,8 @@ export function useSquadManager(initial: SquadInitialData) {
     getAssignedPlayerIds,
     getSubstitutionTargets,
     availableForSlot,
+    currentMatchday: initial.currentMatchday,
+    promotedPlayerIds,
   };
 }
 

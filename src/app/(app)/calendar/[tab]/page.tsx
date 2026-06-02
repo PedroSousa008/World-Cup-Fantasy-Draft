@@ -1,14 +1,12 @@
-import { notFound } from "next/navigation";
-import { SubTabs } from "@/components/layout/sub-tabs";
+import { notFound, redirect } from "next/navigation";
 import { PageHeader } from "@/components/layout/section-page";
 import { CALENDAR_TABS } from "@/lib/navigation";
+import { CalendarMainTabs } from "@/components/tournament/calendar-main-tabs";
 import { CalendarView } from "@/components/tournament/calendar-view";
 import { GamesView } from "@/components/tournament/games-view";
-import { TableView } from "@/components/tournament/table-view";
 import {
   getAllTournamentMatches,
   getMatchesByMatchday,
-  getGroupTablesData,
 } from "@/lib/tournament/get-tournament-data";
 
 export const dynamic = "force-dynamic";
@@ -39,11 +37,15 @@ export default async function CalendarTabPage({ params }: PageProps) {
 
   const meta = TAB_META[tab];
 
+  if (tab === "table") {
+    redirect("/calendar/table/group-stage");
+  }
+
   if (tab === "calendar") {
     const matches = await getAllTournamentMatches();
     return (
       <div className="space-y-6">
-        <SubTabs tabs={CALENDAR_TABS} activeTab={tab} basePath="/calendar" accent="green" />
+        <CalendarMainTabs activeTab={tab} />
         <PageHeader title={meta.title} description={meta.description} />
         <CalendarView matches={matches} />
       </div>
@@ -54,19 +56,12 @@ export default async function CalendarTabPage({ params }: PageProps) {
     const matchdayGroups = await getMatchesByMatchday();
     return (
       <div className="space-y-6">
-        <SubTabs tabs={CALENDAR_TABS} activeTab={tab} basePath="/calendar" accent="green" />
+        <CalendarMainTabs activeTab={tab} />
         <PageHeader title={meta.title} description={meta.description} />
         <GamesView matchdayGroups={matchdayGroups} />
       </div>
     );
   }
 
-  const { tables, bestThird } = await getGroupTablesData();
-  return (
-    <div className="space-y-6">
-      <SubTabs tabs={CALENDAR_TABS} activeTab={tab} basePath="/calendar" accent="green" />
-      <PageHeader title={meta.title} description={meta.description} />
-      <TableView tables={tables} bestThird={bestThird} />
-    </div>
-  );
+  notFound();
 }

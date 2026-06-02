@@ -56,6 +56,27 @@ export const CALENDAR_TABS: SubTab[] = [
   { label: "Table", slug: "table" },
 ];
 
+/** Table tab links to nested group / knockout views. */
+export function calendarTabHref(tab: SubTab): string {
+  if (tab.slug === "table") return "/calendar/table/group-stage";
+  return `/calendar/${tab.slug}`;
+}
+
+export const CALENDAR_TABLE_TABS: SubTab[] = [
+  { label: "Group Stage", slug: "group-stage" },
+  { label: "Knockout Stage", slug: "knockout-stage" },
+];
+
+export const OWNER_MATCHES_EVENTS_TABS: SubTab[] = [
+  { label: "Matches", slug: "matches" },
+  { label: "Events", slug: "events" },
+];
+
+export const OWNER_EVENTS_TABS: SubTab[] = [
+  { label: "Group Stage", slug: "group-stage" },
+  { label: "Knockout", slug: "knockout" },
+];
+
 export function getDefaultTab(tabs: SubTab[]): string {
   return tabs[0]?.slug ?? "";
 }

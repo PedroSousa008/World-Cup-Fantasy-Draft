@@ -9,7 +9,8 @@ import {
   UNASSIGNED_SLOT_ORDER,
 } from "@/lib/squad/slot-keys";
 import { FORMATIONS, type FormationId } from "@/lib/squad/formations";
-import { isTeamManagementLocked } from "@/lib/tournament/matchday-lock";
+import { upsertUserMatchdaySquad } from "@/lib/squad/matchday-squad";
+import { getCurrentMatchday, isTeamManagementLocked } from "@/lib/tournament/matchday-lock";
 
 const formationIds = FORMATIONS.map((f) => f.id) as [FormationId, ...FormationId[]];
 
@@ -18,6 +19,7 @@ const saveLineupSchema = z.object({
   assignments: z.record(z.string(), z.string().nullable()),
   captainId: z.string().nullable(),
   viceCaptainId: z.string().nullable(),
+  promotedPlayerIds: z.array(z.string()).optional(),
 });
 
 export type SquadActionResult =
@@ -99,6 +101,17 @@ export async function saveSquadLineupAction(
       }
     }
   });
+
+  const md = (await getCurrentMatchday()) ?? 1;
+  const promoted =
+    parsed.data.promotedPlayerIds ??
+    (
+      await prisma.userMatchdaySquad.findUnique({
+        where: { userId_matchday: { userId, matchday: md } },
+      })
+    )?.promotedPlayerIds ??
+    [];
+  await upsertUserMatchdaySquad(userId, md, parsed.data.assignments, promoted);
 
   revalidatePath("/my-team");
   revalidatePath("/my-team/team");

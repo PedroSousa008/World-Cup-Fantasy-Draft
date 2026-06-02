@@ -22,7 +22,7 @@ const OWNER_SECTIONS = [
     description: "Enter results, goals, assists, cards, MOTM, and open matches for betting.",
     color: "text-[#00C853]",
     bg: "bg-[#00C853]/10",
-    href: "/owner/matches",
+    href: "/owner/matches-events",
     available: true,
   },
   {

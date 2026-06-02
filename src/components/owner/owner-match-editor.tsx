@@ -20,6 +20,7 @@ const EVENT_OPTIONS = [
   { value: SCORING_EVENT_TYPES.RED_CARD, label: "Red card" },
   { value: SCORING_EVENT_TYPES.OWN_GOAL, label: "Own goal" },
   { value: SCORING_EVENT_TYPES.PENALTY_MISS, label: "Missed penalty" },
+  { value: SCORING_EVENT_TYPES.PENALTY_SAVE, label: "Saved penalty" },
 ];
 
 interface MatchEventRow {

@@ -30,6 +30,7 @@ export interface PlayerComputedStats {
   motmAwards: number;
   minutesPlayed: number;
   totalPoints: number;
+  progressionPoints: number;
   matchdayPoints: Record<number, number>;
   matchHistory: { matchday: number; opponent: string; points: number }[];
 }
@@ -173,6 +174,7 @@ export function computePlayerStats(
     totalPoints: 0,
     matchdayPoints: {},
     matchHistory: [],
+    progressionPoints: 0,
   };
 
   const pointsByMatchday = new Map<number, number>();

@@ -26,9 +26,13 @@ type OwnerMatchListItem = {
 
 interface OwnerMatchesPanelProps {
   matches: OwnerMatchListItem[];
+  basePath?: string;
 }
 
-export function OwnerMatchesPanel({ matches }: OwnerMatchesPanelProps) {
+export function OwnerMatchesPanel({
+  matches,
+  basePath = "/owner/matches-events/matches",
+}: OwnerMatchesPanelProps) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [seedMessage, setSeedMessage] = useState<string | null>(null);
@@ -85,7 +89,7 @@ export function OwnerMatchesPanel({ matches }: OwnerMatchesPanelProps) {
             return (
               <Link
                 key={m.id}
-                href={`/owner/matches/${m.id}`}
+                href={`${basePath}/${m.id}`}
                 className="flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 transition-colors hover:bg-white/10"
               >
                 <div className="min-w-0">

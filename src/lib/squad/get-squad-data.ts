@@ -8,6 +8,7 @@ import {
 } from "@/lib/squad/slot-keys";
 import type { FantasyPlayer } from "@/lib/squad/squad-utils";
 import { getPlayerFixture } from "@/lib/tournament/fixtures";
+import { getNationMatchStartMap } from "@/lib/squad/matchday-squad";
 import { getCurrentMatchday } from "@/lib/tournament/matchday-lock";
 import { getNationTheme } from "@/lib/nation-theme";
 
@@ -20,6 +21,9 @@ export interface SquadInitialData {
   managerNation: string;
   managerNationAbbr: string;
   currentMatchday: number;
+  /** Player nation match started this matchday — bench player cannot enter XI if true */
+  playerNationLocked: Record<string, boolean>;
+  promotedPlayerIds: string[];
 }
 
 export async function getSquadData(userId: string): Promise<SquadInitialData | null> {
@@ -45,6 +49,13 @@ export async function getSquadData(userId: string): Promise<SquadInitialData | n
   const managerNation = user?.selectedNation ?? "—";
   const managerNationAbbr = getNationTheme(managerNation).abbr;
   const currentMatchday = (await getCurrentMatchday()) ?? 1;
+  const nationKickoffs = await getNationMatchStartMap(currentMatchday);
+  const now = Date.now();
+
+  const savedMd = await prisma.userMatchdaySquad.findUnique({
+    where: { userId_matchday: { userId, matchday: currentMatchday } },
+  });
+  const promotedPlayerIds = savedMd?.promotedPlayerIds ?? [];
 
   const statsMap = await loadAllPlayerStats();
 
@@ -110,6 +121,14 @@ export async function getSquadData(userId: string): Promise<SquadInitialData | n
     }
   }
 
+  const playerNationLocked: Record<string, boolean> = {};
+  for (const slot of availableSlots) {
+    const p = slot.player;
+    if (!p.nationalTeamId) continue;
+    const kick = nationKickoffs.get(p.nationalTeamId);
+    playerNationLocked[p.id] = kick ? kick.getTime() <= now : false;
+  }
+
   return {
     assignedPlayers,
     assignments,
@@ -119,6 +138,8 @@ export async function getSquadData(userId: string): Promise<SquadInitialData | n
     managerNation,
     managerNationAbbr,
     currentMatchday,
+    playerNationLocked,
+    promotedPlayerIds,
   };
 }
 

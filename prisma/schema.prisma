@@ -158,6 +158,8 @@ model User {
   powerNotifications PowerNotification[]
   rivalChallengesSent     RivalChallenge[] @relation("RivalChallenger")
   rivalChallengesReceived RivalChallenge[] @relation("RivalOpponent")
+  matchdaySquads          UserMatchdaySquad[]
+  matchdaySubstitutions   MatchdaySubstitution[]
 }
 
 model Account {
@@ -211,9 +213,26 @@ model NationalTeam {
   createdAt  DateTime   @default(now())
   updatedAt  DateTime   @updatedAt
 
-  players       Player[]
-  homeMatches   Match[]  @relation("HomeTeam")
-  awayMatches   Match[]  @relation("AwayTeam")
+  players            Player[]
+  homeMatches        Match[]              @relation("HomeTeam")
+  awayMatches        Match[]              @relation("AwayTeam")
+  progressionBonuses NationProgression[]
+  standingOverride   GroupStandingOverride?
+}
+
+/// Owner manual correction for group tables (overrides auto-calculated values).
+model GroupStandingOverride {
+  id             String       @id @default(cuid())
+  nationalTeamId String       @unique
+  nationalTeam   NationalTeam @relation(fields: [nationalTeamId], references: [id], onDelete: Cascade)
+  played         Int?
+  won            Int?
+  drawn          Int?
+  lost           Int?
+  goalsFor       Int?
+  goalsAgainst   Int?
+  points         Int?
+  updatedAt      DateTime     @updatedAt
 }
 
 model Player {
@@ -319,6 +338,55 @@ model FantasyTeamPlayer {
   createdAt     DateTime    @default(now())
 
   @@unique([fantasyTeamId, playerId])
+}
+
+/// Active XI + bench assignments per user per matchday (for scoring & substitutions).
+model UserMatchdaySquad {
+  id                String   @id @default(cuid())
+  userId            String
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  matchday          Int
+  assignments       Json
+  promotedPlayerIds String[] @default([])
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@unique([userId, matchday])
+  @@index([matchday])
+}
+
+/// In-matchday starter ↔ bench swaps (audit trail).
+model MatchdaySubstitution {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  matchday    Int
+  outPlayerId String
+  inPlayerId  String
+  outSlotId   String
+  inSlotId    String
+  createdAt   DateTime @default(now())
+
+  @@index([userId, matchday])
+}
+
+enum ProgressionStage {
+  LAST_16
+  QUARTER_FINALS
+  SEMI_FINALS
+  FINAL
+  WINNER
+}
+
+/// One-time nation progression bonuses (Owner confirms in Knockout events).
+model NationProgression {
+  id             String           @id @default(cuid())
+  nationalTeamId String
+  nationalTeam   NationalTeam     @relation(fields: [nationalTeamId], references: [id], onDelete: Cascade)
+  stage          ProgressionStage
+  confirmedAt    DateTime         @default(now())
+
+  @@unique([nationalTeamId, stage])
 }
 
 // ─── Saved Players (user shortlist) ──────────────────────────────────────────

@@ -77,6 +77,57 @@ function sortRows(rows: GroupStandingRow[]): GroupStandingRow[] {
   });
 }
 
+export type StandingOverrideInput = {
+  nationalTeamId: string;
+  played?: number | null;
+  won?: number | null;
+  drawn?: number | null;
+  lost?: number | null;
+  goalsFor?: number | null;
+  goalsAgainst?: number | null;
+  points?: number | null;
+};
+
+export function applyStandingOverrides(
+  tables: GroupTable[],
+  overrides: StandingOverrideInput[]
+): GroupTable[] {
+  if (overrides.length === 0) return tables;
+
+  const byTeam = new Map(overrides.map((o) => [o.nationalTeamId, o]));
+
+  return tables.map((table) => {
+    const rows = table.rows.map((row) => {
+      const o = byTeam.get(row.teamId);
+      if (!o) return row;
+
+      const played = o.played ?? row.played;
+      const won = o.won ?? row.won;
+      const drawn = o.drawn ?? row.drawn;
+      const lost = o.lost ?? row.lost;
+      const goalsFor = o.goalsFor ?? row.goalsFor;
+      const goalsAgainst = o.goalsAgainst ?? row.goalsAgainst;
+      const goalDifference = goalsFor - goalsAgainst;
+      const points = o.points ?? won * 3 + drawn;
+
+      return {
+        ...row,
+        played,
+        won,
+        drawn,
+        lost,
+        goalsFor,
+        goalsAgainst,
+        goalDifference,
+        points,
+      };
+    });
+
+    const sorted = sortRows(rows).map((r, i) => ({ ...r, position: i + 1 }));
+    return { ...table, rows: sorted };
+  });
+}
+
 export function computeGroupStandings(
   teams: NationalTeam[],
   matches: FinishedMatch[]

@@ -24,6 +24,8 @@ export default async function MyTeamLayout({
       managerNation: session.user.selectedNation ?? "—",
       managerNationAbbr: "—",
       currentMatchday: 1,
+      playerNationLocked: {},
+      promotedPlayerIds: [],
     };
 
   return (

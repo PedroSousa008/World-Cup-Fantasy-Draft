@@ -3,6 +3,7 @@ import { loadMatchdayInfos } from "@/lib/powers/matchday";
 import type { MatchdayGroup, TournamentMatchCard } from "@/lib/tournament/types";
 import {
   applyBestThirdQualification,
+  applyStandingOverrides,
   computeGroupStandings,
   computeBestThirdPlace,
 } from "@/lib/tournament/standings";
@@ -77,18 +78,20 @@ export async function getAllTournamentMatches(): Promise<TournamentMatchCard[]> 
 }
 
 export async function getGroupTablesData() {
-  const [teams, matches] = await Promise.all([
+  const [teams, matches, overrides] = await Promise.all([
     prisma.nationalTeam.findMany({ where: { groupName: { not: null } } }),
     prisma.match.findMany({
       include: { homeTeam: true, awayTeam: true },
     }),
+    prisma.groupStandingOverride.findMany(),
   ]);
 
-  const rawTables = computeGroupStandings(teams, matches);
+  const computed = computeGroupStandings(teams, matches);
+  const rawTables = applyStandingOverrides(computed, overrides);
   const bestThird = computeBestThirdPlace(rawTables);
   const tables = applyBestThirdQualification(rawTables, bestThird);
 
-  return { tables, bestThird };
+  return { tables, bestThird, overrides };
 }
 
 export async function getMatchDetail(matchId: string) {

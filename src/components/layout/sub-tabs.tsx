@@ -1,15 +1,30 @@
+"use client";
+
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import type { SubTab } from "@/lib/navigation";
 
 interface SubTabsProps {
   tabs: SubTab[];
-  activeTab: string;
+  /** When omitted, active tab is inferred from the current path. */
+  activeTab?: string;
   basePath: string;
   accent?: "blue" | "green" | "red";
+  hrefForTab?: (tab: SubTab) => string;
+  isTabActive?: (tab: SubTab, pathname: string) => boolean;
 }
 
-export function SubTabs({ tabs, activeTab, basePath, accent = "blue" }: SubTabsProps) {
+export function SubTabs({
+  tabs,
+  activeTab,
+  basePath,
+  accent = "blue",
+  hrefForTab,
+  isTabActive,
+}: SubTabsProps) {
+  const pathname = usePathname();
+
   const accentColor = {
     blue: { active: "border-[#0066FF] text-[#0066FF]", hover: "hover:text-white/70" },
     green: { active: "border-[#00C853] text-[#00C853]", hover: "hover:text-white/70" },
@@ -20,8 +35,12 @@ export function SubTabs({ tabs, activeTab, basePath, accent = "blue" }: SubTabsP
     <div className="overflow-x-auto border-b border-white/8">
       <nav className="-mb-px flex min-w-max gap-1 px-1" aria-label="Sub navigation">
         {tabs.map((tab) => {
-          const isActive = activeTab === tab.slug;
-          const href = `${basePath}/${tab.slug}`;
+          const href = hrefForTab?.(tab) ?? `${basePath}/${tab.slug}`;
+          const isActive = activeTab
+            ? activeTab === tab.slug
+            : isTabActive
+              ? isTabActive(tab, pathname)
+              : pathname === href || pathname.startsWith(`${href}/`);
 
           return (
             <Link
