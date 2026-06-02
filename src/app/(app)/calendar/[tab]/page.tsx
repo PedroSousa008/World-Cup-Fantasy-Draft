@@ -1,13 +1,11 @@
+import { Suspense } from "react";
 import { notFound, redirect } from "next/navigation";
 import { PageHeader } from "@/components/layout/section-page";
 import { CALENDAR_TABS } from "@/lib/navigation";
 import { CalendarMainTabs } from "@/components/tournament/calendar-main-tabs";
-import { CalendarView } from "@/components/tournament/calendar-view";
-import { GamesView } from "@/components/tournament/games-view";
-import {
-  getAllTournamentMatches,
-  getMatchesByMatchday,
-} from "@/lib/tournament/get-tournament-data";
+import { CalendarMatchesLoader } from "@/components/tournament/calendar-matches-loader";
+import { GamesMatchesLoader } from "@/components/tournament/games-matches-loader";
+import { CalendarMatchesSkeleton } from "@/components/tournament/calendar-matches-skeleton";
 
 export const dynamic = "force-dynamic";
 
@@ -42,23 +40,25 @@ export default async function CalendarTabPage({ params }: PageProps) {
   }
 
   if (tab === "calendar") {
-    const matches = await getAllTournamentMatches();
     return (
       <div className="space-y-6">
         <CalendarMainTabs activeTab={tab} />
         <PageHeader title={meta.title} description={meta.description} />
-        <CalendarView matches={matches} />
+        <Suspense fallback={<CalendarMatchesSkeleton />}>
+          <CalendarMatchesLoader />
+        </Suspense>
       </div>
     );
   }
 
   if (tab === "games") {
-    const matchdayGroups = await getMatchesByMatchday();
     return (
       <div className="space-y-6">
         <CalendarMainTabs activeTab={tab} />
         <PageHeader title={meta.title} description={meta.description} />
-        <GamesView matchdayGroups={matchdayGroups} />
+        <Suspense fallback={<CalendarMatchesSkeleton />}>
+          <GamesMatchesLoader />
+        </Suspense>
       </div>
     );
   }

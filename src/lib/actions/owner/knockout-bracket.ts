@@ -19,7 +19,7 @@ function revalidateKnockout() {
 }
 
 export async function getOwnerKnockoutBracketData() {
-  return getKnockoutBracketData();
+  return getKnockoutBracketData({ includeNations: true });
 }
 
 export async function assignKnockoutSlotAction(

@@ -47,7 +47,14 @@ export interface KnockoutBracketData {
   nations: BracketNation[];
 }
 
+export interface GetKnockoutBracketOptions {
+  /** Nation list for Owner picker — skip on read-only Calendar view. */
+  includeNations?: boolean;
+}
+
 const KNOCKOUT_SCHEDULE_BASE = new Date("2026-07-01T16:00:00.000Z");
+
+let slotsInitPromise: Promise<void> | null = null;
 
 function scheduleForMatchday(matchday: number, order: number): Date {
   const d = new Date(KNOCKOUT_SCHEDULE_BASE);
@@ -56,52 +63,56 @@ function scheduleForMatchday(matchday: number, order: number): Date {
   return d;
 }
 
+/** One-time slot seed — batched, not 63 sequential upserts. */
 export async function ensureKnockoutSlotsInitialized(): Promise<void> {
-  const count = await prisma.knockoutSlot.count();
-  if (count >= KNOCKOUT_SLOTS.length) return;
+  if (slotsInitPromise) return slotsInitPromise;
 
-  for (const def of KNOCKOUT_SLOTS) {
-    await prisma.knockoutSlot.upsert({
-      where: { slotKey: def.key },
-      create: {
+  slotsInitPromise = (async () => {
+    const existing = await prisma.knockoutSlot.findMany({ select: { slotKey: true } });
+    if (existing.length >= KNOCKOUT_SLOTS.length) return;
+
+    const have = new Set(existing.map((e) => e.slotKey));
+    const missing = KNOCKOUT_SLOTS.filter((s) => !have.has(s.key));
+    if (missing.length === 0) return;
+
+    await prisma.knockoutSlot.createMany({
+      data: missing.map((def) => ({
         slotKey: def.key,
         round: def.round,
         side: def.side,
-      },
-      update: {},
+      })),
+      skipDuplicates: true,
     });
-  }
+  })();
+
+  return slotsInitPromise;
 }
 
-export async function getKnockoutBracketData(): Promise<KnockoutBracketData> {
-  await ensureKnockoutSlotsInitialized();
+type SlotRowWithNation = Awaited<
+  ReturnType<
+    typeof prisma.knockoutSlot.findMany<{
+      include: { nationalTeam: true };
+    }>
+  >
+>[number];
 
-  const [slotRows, matchRows, nations] = await Promise.all([
-    prisma.knockoutSlot.findMany({
-      include: { nationalTeam: true },
-      orderBy: { slotKey: "asc" },
-    }),
-    prisma.match.findMany({
-      where: { knockoutMatchKey: { not: null } },
-      select: {
-        id: true,
-        knockoutMatchKey: true,
-        knockoutWinnerId: true,
-        homeTeamId: true,
-        awayTeamId: true,
-        homeScore: true,
-        awayScore: true,
-        status: true,
-      },
-    }),
-    prisma.nationalTeam.findMany({
-      where: { isActive: true },
-      orderBy: { name: "asc" },
-      select: { id: true, name: true, flagEmoji: true, code: true },
-    }),
-  ]);
-
-  const matchByKey = new Map(matchRows.map((m) => [m.knockoutMatchKey!, m]));
+function buildBracketPayload(
+  slotRows: SlotRowWithNation[],
+  matchRows: {
+    id: string;
+    knockoutMatchKey: string | null;
+    knockoutWinnerId: string | null;
+    homeTeamId: string;
+    awayTeamId: string;
+    homeScore: number | null;
+    awayScore: number | null;
+    status: MatchStatus;
+  }[],
+  nations: BracketNation[]
+): KnockoutBracketData {
+  const matchByKey = new Map(
+    matchRows.filter((m) => m.knockoutMatchKey).map((m) => [m.knockoutMatchKey!, m])
+  );
 
   const slots: BracketSlotState[] = slotRows.map((row) => ({
     slotKey: row.slotKey,
@@ -119,10 +130,12 @@ export async function getKnockoutBracketData(): Promise<KnockoutBracketData> {
     eliminated: row.eliminated,
   }));
 
+  const slotByKey = new Map(slots.map((s) => [s.slotKey, s]));
+
   const matches: BracketMatchState[] = KNOCKOUT_MATCHES.map((def) => {
     const m = matchByKey.get(def.key);
-    const homeId = slots.find((s) => s.slotKey === def.homeSlot)?.nationalTeamId ?? null;
-    const awayId = slots.find((s) => s.slotKey === def.awaySlot)?.nationalTeamId ?? null;
+    const homeId = slotByKey.get(def.homeSlot)?.nationalTeamId ?? null;
+    const awayId = slotByKey.get(def.awaySlot)?.nationalTeamId ?? null;
     let winnerId: string | null = null;
     if (m?.knockoutWinnerId) winnerId = m.knockoutWinnerId;
     else if (m?.status === "FINISHED" && m.homeScore != null && m.awayScore != null) {
@@ -151,6 +164,46 @@ export async function getKnockoutBracketData(): Promise<KnockoutBracketData> {
   return { slots, matches, nations };
 }
 
+/** Fast read — no recompute, no progression sync. */
+export async function getKnockoutBracketData(
+  options: GetKnockoutBracketOptions = {}
+): Promise<KnockoutBracketData> {
+  const { includeNations = false } = options;
+
+  await ensureKnockoutSlotsInitialized();
+
+  const nationsPromise = includeNations
+    ? prisma.nationalTeam.findMany({
+        where: { isActive: true },
+        orderBy: { name: "asc" },
+        select: { id: true, name: true, flagEmoji: true, code: true },
+      })
+    : Promise.resolve([] as BracketNation[]);
+
+  const [slotRows, matchRows, nations] = await Promise.all([
+    prisma.knockoutSlot.findMany({
+      include: { nationalTeam: true },
+      orderBy: { slotKey: "asc" },
+    }),
+    prisma.match.findMany({
+      where: { knockoutMatchKey: { not: null } },
+      select: {
+        id: true,
+        knockoutMatchKey: true,
+        knockoutWinnerId: true,
+        homeTeamId: true,
+        awayTeamId: true,
+        homeScore: true,
+        awayScore: true,
+        status: true,
+      },
+    }),
+    nationsPromise,
+  ]);
+
+  return buildBracketPayload(slotRows, matchRows, nations);
+}
+
 function resolveMatchWinner(
   m: {
     knockoutWinnerId: string | null;
@@ -160,10 +213,10 @@ function resolveMatchWinner(
     awayScore: number | null;
     status: MatchStatus;
   } | undefined,
-  homeId: string | null,
-  awayId: string | null
+  homeId: string,
+  awayId: string
 ): string | null {
-  if (!m || !homeId || !awayId) return null;
+  if (!m) return null;
   if (m.knockoutWinnerId) return m.knockoutWinnerId;
   if (m.status !== "FINISHED" || m.homeScore == null || m.awayScore == null) return null;
   if (m.homeScore > m.awayScore) return homeId;
@@ -171,88 +224,25 @@ function resolveMatchWinner(
   return null;
 }
 
-/**
- * Full idempotent recompute: clear auto slots, propagate winners in order, sync progression.
- */
-export async function recomputeKnockoutBracket(): Promise<void> {
-  await ensureKnockoutSlotsInitialized();
-
-  const [slotRows, matchRows] = await Promise.all([
-    prisma.knockoutSlot.findMany(),
-    prisma.match.findMany({ where: { knockoutMatchKey: { not: null } } }),
-  ]);
-
-  const slotMap = new Map(slotRows.map((s) => [s.slotKey, { ...s }]));
-  const matchMap = new Map(matchRows.map((m) => [m.knockoutMatchKey!, m]));
-
-  for (const def of KNOCKOUT_SLOTS) {
-    if (!isManualSlot(def.key)) {
-      const slot = slotMap.get(def.key);
-      if (slot) {
-        slot.nationalTeamId = null;
-        slot.eliminated = false;
-      }
-    }
-  }
-
-  for (const matchDef of KNOCKOUT_MATCHES) {
-    const homeSlot = slotMap.get(matchDef.homeSlot);
-    const awaySlot = slotMap.get(matchDef.awaySlot);
-    const homeId = homeSlot?.nationalTeamId ?? null;
-    const awayId = awaySlot?.nationalTeamId ?? null;
-
-    if (!homeId || !awayId) continue;
-
-    await syncKnockoutMatchRecord(matchDef, homeId, awayId);
-
-    let m = matchMap.get(matchDef.key);
-    if (!m) {
-      const found = await prisma.match.findUnique({ where: { knockoutMatchKey: matchDef.key } });
-      if (found) {
-        m = found;
-        matchMap.set(matchDef.key, found);
-      }
-    }
-
-    const winnerId = resolveMatchWinner(m ?? undefined, homeId, awayId);
-    if (!winnerId) continue;
-
-    const winnerSlot = slotMap.get(matchDef.winnerSlot);
-    if (winnerSlot) {
-      winnerSlot.nationalTeamId = winnerId;
-      winnerSlot.eliminated = false;
-    }
-
-    const loserId = winnerId === homeId ? awayId : homeId;
-    if (homeSlot) homeSlot.eliminated = loserId === homeId;
-    if (awaySlot) awaySlot.eliminated = loserId === awayId;
-
-    if (m && !m.knockoutWinnerId) {
-      await prisma.match.update({
-        where: { id: m.id },
-        data: { knockoutWinnerId: winnerId },
-      });
-    }
-  }
-
-  for (const slot of slotMap.values()) {
-    await prisma.knockoutSlot.update({
-      where: { slotKey: slot.slotKey },
-      data: {
-        nationalTeamId: slot.nationalTeamId,
-        eliminated: slot.eliminated,
-      },
-    });
-  }
-
-  await syncProgressionFromBracket();
+/** Remove knockout match when bracket pairing is incomplete. */
+async function removeKnockoutMatch(matchKey: string): Promise<void> {
+  await prisma.match.deleteMany({ where: { knockoutMatchKey: matchKey } });
 }
 
+/**
+ * Create or update match when both teams exist; delete when either slot is empty.
+ * Uses stable knockoutMatchKey — never duplicates.
+ */
 async function syncKnockoutMatchRecord(
   def: KnockoutMatchDef,
-  homeId: string,
-  awayId: string
+  homeId: string | null,
+  awayId: string | null
 ): Promise<void> {
+  if (!homeId || !awayId) {
+    await removeKnockoutMatch(def.key);
+    return;
+  }
+
   const scheduledAt = scheduleForMatchday(def.matchday, def.order);
   const existing = await prisma.match.findUnique({
     where: { knockoutMatchKey: def.key },
@@ -282,6 +272,129 @@ async function syncKnockoutMatchRecord(
       },
     });
   }
+}
+
+/**
+ * Full idempotent recompute after Owner edits (not on page load).
+ * Batched DB writes; progression sync only at end.
+ */
+export async function recomputeKnockoutBracket(): Promise<void> {
+  await ensureKnockoutSlotsInitialized();
+
+  const [slotRows, matchRows] = await Promise.all([
+    prisma.knockoutSlot.findMany(),
+    prisma.match.findMany({
+      where: { knockoutMatchKey: { not: null } },
+      select: {
+        id: true,
+        knockoutMatchKey: true,
+        knockoutWinnerId: true,
+        homeTeamId: true,
+        awayTeamId: true,
+        homeScore: true,
+        awayScore: true,
+        status: true,
+      },
+    }),
+  ]);
+
+  const slotMap = new Map(slotRows.map((s) => [s.slotKey, { ...s }]));
+  const matchMap = new Map(
+    matchRows
+      .filter((m) => m.knockoutMatchKey)
+      .map((m) => [m.knockoutMatchKey!, m])
+  );
+
+  for (const def of KNOCKOUT_SLOTS) {
+    if (!isManualSlot(def.key)) {
+      const slot = slotMap.get(def.key);
+      if (slot) {
+        slot.nationalTeamId = null;
+        slot.eliminated = false;
+      }
+    }
+  }
+
+  const matchUpdates: { id: string; knockoutWinnerId: string }[] = [];
+  const slotUpdates: { slotKey: string; nationalTeamId: string | null; eliminated: boolean }[] =
+    [];
+
+  for (const matchDef of KNOCKOUT_MATCHES) {
+    const homeSlot = slotMap.get(matchDef.homeSlot);
+    const awaySlot = slotMap.get(matchDef.awaySlot);
+    const homeId = homeSlot?.nationalTeamId ?? null;
+    const awayId = awaySlot?.nationalTeamId ?? null;
+
+    await syncKnockoutMatchRecord(matchDef, homeId, awayId);
+
+    if (!homeId || !awayId) continue;
+
+    let m = matchMap.get(matchDef.key);
+    if (!m) {
+      const found = await prisma.match.findUnique({
+        where: { knockoutMatchKey: matchDef.key },
+        select: {
+          id: true,
+          knockoutMatchKey: true,
+          knockoutWinnerId: true,
+          homeTeamId: true,
+          awayTeamId: true,
+          homeScore: true,
+          awayScore: true,
+          status: true,
+        },
+      });
+      if (found) {
+        m = found;
+        matchMap.set(matchDef.key, found);
+      }
+    }
+
+    const winnerId = resolveMatchWinner(m ?? undefined, homeId, awayId);
+    if (!winnerId) continue;
+
+    const winnerSlot = slotMap.get(matchDef.winnerSlot);
+    if (winnerSlot) {
+      winnerSlot.nationalTeamId = winnerId;
+      winnerSlot.eliminated = false;
+    }
+
+    const loserId = winnerId === homeId ? awayId : homeId;
+    if (homeSlot) homeSlot.eliminated = loserId === homeId;
+    if (awaySlot) awaySlot.eliminated = loserId === awayId;
+
+    if (m && !m.knockoutWinnerId) {
+      matchUpdates.push({ id: m.id, knockoutWinnerId: winnerId });
+    }
+  }
+
+  for (const slot of slotMap.values()) {
+    slotUpdates.push({
+      slotKey: slot.slotKey,
+      nationalTeamId: slot.nationalTeamId,
+      eliminated: slot.eliminated,
+    });
+  }
+
+  await prisma.$transaction(async (tx) => {
+    for (const u of matchUpdates) {
+      await tx.match.update({
+        where: { id: u.id },
+        data: { knockoutWinnerId: u.knockoutWinnerId },
+      });
+    }
+    for (const u of slotUpdates) {
+      await tx.knockoutSlot.update({
+        where: { slotKey: u.slotKey },
+        data: {
+          nationalTeamId: u.nationalTeamId,
+          eliminated: u.eliminated,
+        },
+      });
+    }
+  });
+
+  await syncProgressionFromBracket();
 }
 
 export async function assignTeamToKnockoutSlot(
@@ -334,16 +447,19 @@ export async function setKnockoutMatchWinner(
     return { ok: false, error: "Winner must be one of the match teams." };
   }
 
-  await syncKnockoutMatchRecord(def, homeId, awayId);
-
   const match = await prisma.match.findUnique({ where: { knockoutMatchKey: matchKey } });
-  if (!match) return { ok: false, error: "Match record missing." };
+  if (!match) {
+    await syncKnockoutMatchRecord(def, homeId, awayId);
+  }
+
+  const record = await prisma.match.findUnique({ where: { knockoutMatchKey: matchKey } });
+  if (!record) return { ok: false, error: "Match record missing." };
 
   const homeScore = winnerNationalTeamId === homeId ? 1 : 0;
   const awayScore = winnerNationalTeamId === awayId ? 1 : 0;
 
   await prisma.match.update({
-    where: { id: match.id },
+    where: { id: record.id },
     data: {
       status: MatchStatus.FINISHED,
       homeScore,

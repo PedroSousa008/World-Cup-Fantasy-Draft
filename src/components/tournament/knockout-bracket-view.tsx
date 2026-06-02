@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
 import { Trophy } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getNationFlag } from "@/lib/nations";
@@ -22,22 +21,68 @@ import { MobileFullScreenModal } from "@/components/ui/mobile-full-screen-modal"
 interface KnockoutBracketViewProps {
   data: KnockoutBracketData;
   editable?: boolean;
+  onMutated?: () => void;
 }
 
-export function KnockoutBracketView({ data, editable = false }: KnockoutBracketViewProps) {
+export function KnockoutBracketView({
+  data,
+  editable = false,
+  onMutated,
+}: KnockoutBracketViewProps) {
   const slotMap = useMemo(
     () => new Map(data.slots.map((s) => [s.slotKey, s])),
     [data.slots]
   );
-  const leftR32 = data.matches.filter((m) => m.side === "left" && m.round === "ROUND_OF_32");
-  const leftR16 = data.matches.filter((m) => m.side === "left" && m.round === "ROUND_OF_16");
-  const leftQF = data.matches.filter((m) => m.side === "left" && m.round === "QUARTER_FINALS");
-  const leftSF = data.matches.filter((m) => m.side === "left" && m.round === "SEMI_FINALS");
-  const rightR32 = data.matches.filter((m) => m.side === "right" && m.round === "ROUND_OF_32");
-  const rightR16 = data.matches.filter((m) => m.side === "right" && m.round === "ROUND_OF_16");
-  const rightQF = data.matches.filter((m) => m.side === "right" && m.round === "QUARTER_FINALS");
-  const rightSF = data.matches.filter((m) => m.side === "right" && m.round === "SEMI_FINALS");
-  const finalMatch = data.matches.find((m) => m.round === "FINAL");
+  const {
+    leftR32,
+    leftR16,
+    leftQF,
+    leftSF,
+    rightR32,
+    rightR16,
+    rightQF,
+    rightSF,
+    finalMatch,
+  } = useMemo(() => {
+    const leftR32: BracketMatchState[] = [];
+    const leftR16: BracketMatchState[] = [];
+    const leftQF: BracketMatchState[] = [];
+    const leftSF: BracketMatchState[] = [];
+    const rightR32: BracketMatchState[] = [];
+    const rightR16: BracketMatchState[] = [];
+    const rightQF: BracketMatchState[] = [];
+    const rightSF: BracketMatchState[] = [];
+    let finalMatch: BracketMatchState | undefined;
+
+    for (const m of data.matches) {
+      if (m.round === "FINAL") {
+        finalMatch = m;
+        continue;
+      }
+      if (m.side === "left") {
+        if (m.round === "ROUND_OF_32") leftR32.push(m);
+        else if (m.round === "ROUND_OF_16") leftR16.push(m);
+        else if (m.round === "QUARTER_FINALS") leftQF.push(m);
+        else if (m.round === "SEMI_FINALS") leftSF.push(m);
+      } else if (m.side === "right") {
+        if (m.round === "ROUND_OF_32") rightR32.push(m);
+        else if (m.round === "ROUND_OF_16") rightR16.push(m);
+        else if (m.round === "QUARTER_FINALS") rightQF.push(m);
+        else if (m.round === "SEMI_FINALS") rightSF.push(m);
+      }
+    }
+    return {
+      leftR32,
+      leftR16,
+      leftQF,
+      leftSF,
+      rightR32,
+      rightR16,
+      rightQF,
+      rightSF,
+      finalMatch,
+    };
+  }, [data.matches]);
 
   const champion = slotMap.get("champion");
 
@@ -58,6 +103,7 @@ export function KnockoutBracketView({ data, editable = false }: KnockoutBracketV
             editable={editable}
             nations={data.nations}
             align="left"
+            onMutated={onMutated}
           />
 
           <div className="flex w-[140px] shrink-0 flex-col items-center justify-center gap-6 px-2">
@@ -69,6 +115,7 @@ export function KnockoutBracketView({ data, editable = false }: KnockoutBracketV
                   editable={editable}
                   nations={data.nations}
                   compact
+                  onMutated={onMutated}
                 />
               )}
             </RoundColumn>
@@ -87,6 +134,7 @@ export function KnockoutBracketView({ data, editable = false }: KnockoutBracketV
             editable={editable}
             nations={data.nations}
             align="right"
+            onMutated={onMutated}
           />
         </div>
       </div>
@@ -100,12 +148,14 @@ function BracketSide({
   editable,
   nations,
   align,
+  onMutated,
 }: {
   matches: BracketMatchState[][];
   slotMap: Map<string, BracketSlotState>;
   editable: boolean;
   nations: BracketNation[];
   align: "left" | "right";
+  onMutated?: () => void;
 }) {
   const labels = ["Round of 32", "Round of 16", "Quarter Finals", "Semi Finals"];
 
@@ -125,6 +175,7 @@ function BracketSide({
               slotMap={slotMap}
               editable={editable}
               nations={nations}
+              onMutated={onMutated}
             />
           ))}
         </RoundColumn>
@@ -158,14 +209,15 @@ function MatchPair({
   editable,
   nations,
   compact,
+  onMutated,
 }: {
   match: BracketMatchState;
   slotMap: Map<string, BracketSlotState>;
   editable: boolean;
   nations: BracketNation[];
   compact?: boolean;
+  onMutated?: () => void;
 }) {
-  const router = useRouter();
   const home = slotMap.get(match.homeSlot);
   const away = slotMap.get(match.awaySlot);
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -229,12 +281,12 @@ function MatchPair({
           onPick={async (id) => {
             if (activeSlot) await assignKnockoutSlotAction(activeSlot, id);
             setPickerOpen(false);
-            router.refresh();
+            onMutated?.();
           }}
           onClear={async () => {
             if (activeSlot) await assignKnockoutSlotAction(activeSlot, null);
             setPickerOpen(false);
-            router.refresh();
+            onMutated?.();
           }}
         />
       )}
@@ -249,7 +301,7 @@ function MatchPair({
           onPick={async (winnerId) => {
             await setKnockoutWinnerAction(match.matchKey, winnerId);
             setWinnerOpen(false);
-            router.refresh();
+            onMutated?.();
           }}
         />
       )}

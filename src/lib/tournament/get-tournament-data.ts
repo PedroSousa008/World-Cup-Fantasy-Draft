@@ -40,7 +40,16 @@ function mapMatch(
 
 async function loadMatches() {
   return prisma.match.findMany({
-    where: { matchday: { not: null } },
+    where: {
+      matchday: { not: null },
+      OR: [
+        { stage: "GROUP" },
+        {
+          stage: "KNOCKOUT",
+          knockoutMatchKey: { not: null },
+        },
+      ],
+    },
     orderBy: [{ scheduledAt: "asc" }],
     include: {
       homeTeam: true,

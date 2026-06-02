@@ -55,14 +55,28 @@ export async function syncProgressionFromBracket(): Promise<void> {
     nationStages.set(nationId, stages);
   }
 
-  await prisma.nationProgression.deleteMany({});
-
   const rows: { nationalTeamId: string; stage: ProgressionStage }[] = [];
   for (const [nationalTeamId, stages] of nationStages) {
     for (const stage of stages) {
       rows.push({ nationalTeamId, stage });
     }
   }
+
+  const existing = await prisma.nationProgression.findMany({
+    select: { nationalTeamId: true, stage: true },
+  });
+
+  const existingSet = new Set(existing.map((e) => `${e.nationalTeamId}:${e.stage}`));
+  const nextSet = new Set(rows.map((r) => `${r.nationalTeamId}:${r.stage}`));
+
+  if (
+    existingSet.size === nextSet.size &&
+    [...existingSet].every((k) => nextSet.has(k))
+  ) {
+    return;
+  }
+
+  await prisma.nationProgression.deleteMany({});
 
   if (rows.length > 0) {
     await prisma.nationProgression.createMany({ data: rows, skipDuplicates: true });

@@ -1,15 +1,12 @@
-import { KnockoutBracketView } from "@/components/tournament/knockout-bracket-view";
-import { getKnockoutBracketData } from "@/lib/tournament/knockout/bracket-service";
+import { KnockoutBracketClient } from "@/components/tournament/knockout-bracket-client";
 
-export const dynamic = "force-dynamic";
-
-export default async function CalendarTableKnockoutPage() {
-  const data = await getKnockoutBracketData();
-
+export default function CalendarTableKnockoutPage() {
   return (
     <div className="space-y-4">
-      <p className="text-sm text-white/55">Knockout bracket — view only. Owner manages teams and results.</p>
-      <KnockoutBracketView data={data} editable={false} />
+      <p className="text-sm text-white/55">
+        Knockout bracket — view only. Owner manages teams and results.
+      </p>
+      <KnockoutBracketClient editable={false} />
     </div>
   );
 }
