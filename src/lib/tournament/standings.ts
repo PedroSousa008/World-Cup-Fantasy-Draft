@@ -1,5 +1,6 @@
 import type { Match, NationalTeam } from "@prisma/client";
 import type { GroupStandingRow, GroupTable, ThirdPlaceRow } from "@/lib/tournament/types";
+import { getGroupTableAbbreviation } from "@/lib/nations/group-table-display";
 import { GROUP_LETTERS, TOURNAMENT_GROUPS } from "@/lib/tournament/groups-data";
 
 type FinishedMatch = Match & {
@@ -10,6 +11,7 @@ type FinishedMatch = Match & {
 interface TeamAccumulator {
   teamId: string;
   teamName: string;
+  teamCode: string;
   flagEmoji: string | null;
   played: number;
   won: number;
@@ -23,6 +25,7 @@ function emptyAcc(team: NationalTeam): TeamAccumulator {
   return {
     teamId: team.id,
     teamName: team.name,
+    teamCode: getGroupTableAbbreviation(team.name, team.code),
     flagEmoji: team.flagEmoji,
     played: 0,
     won: 0,
@@ -53,6 +56,7 @@ function toRow(acc: TeamAccumulator, position: number): GroupStandingRow {
     position,
     teamId: acc.teamId,
     teamName: acc.teamName,
+    teamCode: acc.teamCode,
     flagEmoji: acc.flagEmoji,
     played: acc.played,
     won: acc.won,

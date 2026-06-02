@@ -26,6 +26,7 @@ export interface GroupStandingRow {
   position: number;
   teamId: string;
   teamName: string;
+  teamCode: string;
   flagEmoji: string | null;
   played: number;
   won: number;

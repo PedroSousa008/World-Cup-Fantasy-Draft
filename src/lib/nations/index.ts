@@ -22,3 +22,5 @@ export function getNationFlag(nationName: string): string {
 export function getNationFlagBySlug(slug: string): string {
   return WORLD_CUP_NATION_BY_SLUG.get(slug)?.flagEmoji ?? "🏳️";
 }
+
+export { getGroupTableAbbreviation } from "@/lib/nations/group-table-display";
