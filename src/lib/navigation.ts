@@ -42,7 +42,6 @@ export const MY_TEAM_TABS: SubTab[] = [
 export const PREDICTIONS_TABS: SubTab[] = [
   { label: "Tournament Predictions", slug: "tournament" },
   { label: "Match Predictions", slug: "matches" },
-  { label: "Prediction Ranking", slug: "ranking" },
 ];
 
 export const BETS_TABS: SubTab[] = [

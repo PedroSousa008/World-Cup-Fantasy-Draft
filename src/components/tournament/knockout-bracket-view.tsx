@@ -17,6 +17,7 @@ import { MobileFullScreenModal } from "@/components/ui/mobile-full-screen-modal"
 interface KnockoutBracketViewProps {
   data: KnockoutBracketData;
   editable?: boolean;
+  hintText?: string;
   onAssignSlot?: (slotKey: string, nationalTeamId: string | null) => Promise<void>;
   onSetWinner?: (matchKey: string, winnerNationalTeamId: string) => Promise<void>;
 }
@@ -24,6 +25,7 @@ interface KnockoutBracketViewProps {
 export function KnockoutBracketView({
   data,
   editable = false,
+  hintText,
   onAssignSlot,
   onSetWinner,
 }: KnockoutBracketViewProps) {
@@ -53,8 +55,8 @@ export function KnockoutBracketView({
     <div className="knockout-bracket-root space-y-4">
       {editable && (
         <p className="text-sm text-white/55">
-          Tap Round of 32 slots to add teams. Tap a match to pick the winner — or enter results
-          under Matches (MD 4–8). Winners advance automatically.
+          {hintText ??
+            "Tap Round of 32 slots to add teams. Tap a match to pick the winner — or enter results under Matches (MD 4–8). Winners advance automatically."}
         </p>
       )}
 
@@ -324,7 +326,7 @@ function MatchPair({
         nation={isR32 ? slotMap.get(match.homeSlot)?.nation ?? null : match.homeNation}
         waiting={!isR32 && match.homeWaiting}
         empty={!isR32 && !match.homeNation && !match.homeWaiting}
-        editable={editable && isR32}
+        editable={editable && isR32 && Boolean(onAssignSlot)}
         isWinner={match.winnerId === match.homeTeamId}
         isLoser={Boolean(
           match.winnerId && match.homeTeamId && match.winnerId !== match.homeTeamId
@@ -345,7 +347,7 @@ function MatchPair({
         nation={isR32 ? slotMap.get(match.awaySlot)?.nation ?? null : match.awayNation}
         waiting={!isR32 && match.awayWaiting}
         empty={!isR32 && !match.awayNation && !match.awayWaiting}
-        editable={editable && isR32}
+        editable={editable && isR32 && Boolean(onAssignSlot)}
         isWinner={match.winnerId === match.awayTeamId}
         isLoser={Boolean(
           match.winnerId && match.awayTeamId && match.winnerId !== match.awayTeamId
@@ -362,7 +364,7 @@ function MatchPair({
         }}
       />
 
-      {editable && isR32 && (
+      {editable && isR32 && onAssignSlot && (
         <NationPickerModal
           open={pickerOpen}
           onClose={() => setPickerOpen(false)}

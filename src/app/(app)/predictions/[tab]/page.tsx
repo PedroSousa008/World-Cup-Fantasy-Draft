@@ -1,50 +1,61 @@
-import { notFound } from "next/navigation";
+import { redirect } from "next/navigation";
+import { auth } from "@/lib/auth";
 import { SubTabs } from "@/components/layout/sub-tabs";
-import { SectionPage } from "@/components/layout/section-page";
+import { PageHeader } from "@/components/layout/section-page";
 import { PREDICTIONS_TABS } from "@/lib/navigation";
+import { GroupStagePredictionsClient } from "@/components/predictions/group-stage-predictions-client";
+import { MatchPredictionsClient } from "@/components/predictions/match-predictions-client";
+import { getTournamentPredictionsData } from "@/lib/predictions/get-tournament-predictions-data";
+import { getMatchesByMatchday } from "@/lib/tournament/get-tournament-data";
 
-const TAB_CONTENT: Record<
-  string,
-  { title: string; description: string; emptyTitle: string; emptyDescription: string }
-> = {
-  tournament: {
-    title: "Tournament Predictions",
-    description: "Predict the World Cup winner, Golden Boot, and more.",
-    emptyTitle: "No tournament predictions yet",
-    emptyDescription:
-      "Submit your tournament predictions before the deadline set by the Owner.",
-  },
-  matches: {
-    title: "Match Predictions",
-    description: "Predict match winners, scores, and first goalscorers.",
-    emptyTitle: "No match predictions yet",
-    emptyDescription:
-      "Match predictions will be available once the Owner publishes the schedule.",
-  },
-  ranking: {
-    title: "Prediction Ranking",
-    description: "See who has the best prediction accuracy.",
-    emptyTitle: "Prediction rankings empty",
-    emptyDescription:
-      "Rankings will update automatically as predictions are scored.",
-  },
-};
+export const dynamic = "force-dynamic";
 
 interface PageProps {
   params: Promise<{ tab: string }>;
 }
 
 export default async function PredictionsTabPage({ params }: PageProps) {
+  const session = await auth();
+  if (!session?.user?.id) redirect("/login");
+
   const { tab } = await params;
   const validTab = PREDICTIONS_TABS.find((t) => t.slug === tab);
-  if (!validTab) notFound();
+  if (!validTab) redirect(`/predictions/${PREDICTIONS_TABS[0]!.slug}`);
 
-  const content = TAB_CONTENT[tab];
+  if (tab === "tournament") {
+    const data = await getTournamentPredictionsData(session.user.id);
 
-  return (
-    <div className="space-y-6">
-      <SubTabs tabs={PREDICTIONS_TABS} activeTab={tab} basePath="/predictions" accent="blue" />
-      <SectionPage {...content} accent="blue" />
-    </div>
-  );
+    return (
+      <div className="space-y-6 overflow-x-hidden">
+        <SubTabs tabs={PREDICTIONS_TABS} activeTab={tab} basePath="/predictions" accent="blue" />
+        <PageHeader
+          title="Tournament Predictions"
+          description="Predict every group ranking, then pick knockout winners once the Group Stage ends."
+        />
+        <GroupStagePredictionsClient
+          groups={data.groups}
+          completedGroupCount={data.completedGroupCount}
+          allGroupsComplete={data.allGroupsComplete}
+          knockoutUnlocked={data.knockoutUnlocked}
+        />
+      </div>
+    );
+  }
+
+  if (tab === "matches") {
+    const matchdayGroups = await getMatchesByMatchday();
+
+    return (
+      <div className="space-y-6 overflow-x-hidden">
+        <SubTabs tabs={PREDICTIONS_TABS} activeTab={tab} basePath="/predictions" accent="blue" />
+        <PageHeader
+          title="Match Predictions"
+          description="Predict individual match outcomes — scoring coming later."
+        />
+        <MatchPredictionsClient matchdayGroups={matchdayGroups} />
+      </div>
+    );
+  }
+
+  redirect(`/predictions/${PREDICTIONS_TABS[0]!.slug}`);
 }
