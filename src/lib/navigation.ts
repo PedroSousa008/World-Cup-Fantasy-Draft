@@ -76,6 +76,11 @@ export const OWNER_EVENTS_TABS: SubTab[] = [
   { label: "Knockout", slug: "knockout" },
 ];
 
+export const OWNER_PLAYERS_TABS: SubTab[] = [
+  { label: "Nations & Players", slug: "nations" },
+  { label: "Teams", slug: "teams" },
+];
+
 export function getDefaultTab(tabs: SubTab[]): string {
   return tabs[0]?.slug ?? "";
 }

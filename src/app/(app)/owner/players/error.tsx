@@ -23,7 +23,7 @@ export default function OwnerPlayersError({
         <Button type="button" onClick={() => reset()}>
           Try again
         </Button>
-        <Link href="/owner/players">
+        <Link href="/owner/players/nations">
           <Button type="button" variant="outline">
             Open Players & Teams
           </Button>

@@ -1,8 +1,11 @@
 import type { FormationId, FormationShape } from "@/lib/squad/formations";
 import { buildAllSlots, getFormation } from "@/lib/squad/formations";
+import { isOwnerRosterSlotOrder } from "@/lib/owner/owner-roster-slots";
 
 /** Players not placed on the pitch/bench yet. */
 export const UNASSIGNED_SLOT_ORDER = -1;
+
+export { isOwnerRosterSlotOrder };
 
 export function slotIdToOrder(slotId: string): number {
   const [kind, idxStr] = slotId.split("-");
@@ -39,6 +42,7 @@ export function buildAssignmentsFromDb(
 
   for (const row of lineup) {
     if (row.slotOrder === UNASSIGNED_SLOT_ORDER) continue;
+    if (isOwnerRosterSlotOrder(row.slotOrder)) continue;
     const slotId = orderToSlotId(row.slotOrder, formationId);
     if (slotId) assignments[slotId] = row.playerId;
   }

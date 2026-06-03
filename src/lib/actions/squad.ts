@@ -6,6 +6,7 @@ import { prisma } from "@/lib/db/prisma";
 import { auth } from "@/lib/auth";
 import {
   buildLineupPayload,
+  isOwnerRosterSlotOrder,
   UNASSIGNED_SLOT_ORDER,
 } from "@/lib/squad/slot-keys";
 import { FORMATIONS, type FormationId } from "@/lib/squad/formations";
@@ -89,6 +90,11 @@ export async function saveSquadLineupAction(
             isStarter: inLineup.isStarter,
             slotOrder: inLineup.slotOrder,
           },
+        });
+      } else if (isOwnerRosterSlotOrder(ftp.slotOrder)) {
+        await tx.fantasyTeamPlayer.update({
+          where: { id: ftp.id },
+          data: { isStarter: false },
         });
       } else {
         await tx.fantasyTeamPlayer.update({

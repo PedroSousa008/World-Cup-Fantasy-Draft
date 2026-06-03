@@ -26,7 +26,7 @@ export default async function OwnerNationPage({ params }: PageProps) {
     return (
       <div className="space-y-6 overflow-x-hidden pb-8">
         <Link
-          href="/owner/players"
+          href="/owner/players/nations"
           className="inline-flex items-center gap-1 text-sm font-semibold text-white/50"
         >
           <ArrowLeft className="h-4 w-4" />
@@ -35,7 +35,7 @@ export default async function OwnerNationPage({ params }: PageProps) {
         <div className="rounded-2xl bg-white/95 p-6 text-center shadow-lg ring-1 ring-black/5">
           <p className="font-bold text-[#081120]">Nation not found</p>
           <Link
-            href="/owner/players"
+            href="/owner/players/nations"
             className="mt-4 inline-block text-sm font-semibold text-[#0066FF]"
           >
             ← Nations & Players
@@ -51,7 +51,7 @@ export default async function OwnerNationPage({ params }: PageProps) {
   return (
     <div className="space-y-6 overflow-x-hidden pb-8">
       <Link
-        href="/owner/players"
+        href="/owner/players/nations"
         className="inline-flex items-center gap-1 text-sm font-semibold text-white/50"
       >
         <ArrowLeft className="h-4 w-4" />
