@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { prefetchPunishmentsRewards } from "@/lib/bets/punishments-rewards-cache";
 import { cn } from "@/lib/utils";
 import type { SubTab } from "@/lib/navigation";
 
@@ -46,6 +47,11 @@ export function SubTabs({
             <Link
               key={tab.slug}
               href={href}
+              onMouseEnter={() => {
+                if (basePath === "/bets" && tab.slug === "punishments") {
+                  prefetchPunishmentsRewards();
+                }
+              }}
               className={cn(
                 "relative whitespace-nowrap px-4 py-3.5 text-sm font-semibold transition-all duration-300",
                 "border-b-2",

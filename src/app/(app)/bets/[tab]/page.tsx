@@ -5,15 +5,13 @@ import { SubTabs } from "@/components/layout/sub-tabs";
 import { PageHeader } from "@/components/layout/section-page";
 import { MatchBetsView } from "@/components/bets/match-bets-view";
 import { PunishmentsRewardsView } from "@/components/bets/punishments-rewards-view";
+import { getPunishmentsTableRows } from "@/lib/bets/get-punishments-table-rows";
 import { getMatchBetsData } from "@/lib/bets/get-match-bets-data";
-import { getPunishmentsRewardsData } from "@/lib/bets/get-punishments-rewards-data";
 import { BETS_TABS } from "@/lib/navigation";
 
 interface PageProps {
   params: Promise<{ tab: string }>;
 }
-
-export const dynamic = "force-dynamic";
 
 export default async function BetsTabPage({ params }: PageProps) {
   const session = await auth();
@@ -23,7 +21,15 @@ export default async function BetsTabPage({ params }: PageProps) {
   const validTab = BETS_TABS.find((t) => t.slug === tab);
   if (!validTab) notFound();
 
-  const canManage = await isPlatformOwner(session.user.id);
+  const isPunishments = tab === "punishments";
+
+  const canManagePromise = isPlatformOwner(session.user.id);
+  const rowsPromise = isPunishments ? getPunishmentsTableRows() : null;
+
+  const [canManage, initialRows] = await Promise.all([
+    canManagePromise,
+    rowsPromise ?? Promise.resolve([]),
+  ]);
 
   return (
     <div className="space-y-6 overflow-x-hidden pb-8">
@@ -37,7 +43,17 @@ export default async function BetsTabPage({ params }: PageProps) {
       {tab === "bets" ? (
         <BetsTabContent userId={session.user.id} showVoteStats={canManage} />
       ) : (
-        <PunishmentsTabContent userId={session.user.id} canEdit={canManage} />
+        <div className="space-y-4">
+          <div>
+            <h2 className="text-display text-xl">Punishments & Rewards</h2>
+            <p className="text-body text-sm">
+              {canManage
+                ? "Manage outcomes by ranking position. Users see updates live."
+                : "See what applies at each ranking position. Your current rank is highlighted."}
+            </p>
+          </div>
+          <PunishmentsRewardsView initialRows={initialRows} canEdit={canManage} />
+        </div>
       )}
     </div>
   );
@@ -59,30 +75,6 @@ async function BetsTabContent({
         <p className="text-body text-sm">Pick one team per match. Odds are set by the Owner.</p>
       </div>
       <MatchBetsView initial={data} showVoteStats={showVoteStats} />
-    </div>
-  );
-}
-
-async function PunishmentsTabContent({
-  userId,
-  canEdit,
-}: {
-  userId: string;
-  canEdit: boolean;
-}) {
-  const data = await getPunishmentsRewardsData(userId);
-
-  return (
-    <div className="space-y-4">
-      <div>
-        <h2 className="text-display text-xl">Punishments & Rewards</h2>
-        <p className="text-body text-sm">
-          {canEdit
-            ? "Manage outcomes by ranking position. Users see updates live."
-            : "See what applies at each ranking position. Your current rank is highlighted."}
-        </p>
-      </div>
-      <PunishmentsRewardsView initial={data} canEdit={canEdit} />
     </div>
   );
 }

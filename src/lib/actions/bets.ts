@@ -4,12 +4,14 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db/prisma";
 import { requireOwnerSession } from "@/lib/actions/owner/helpers";
 import { ensureRankingOutcomeRows } from "@/lib/bets/ensure-ranking-outcome-rows";
+import { invalidateLeagueRankIndex } from "@/lib/rankings/league-rank-index";
 import type { OwnerActionResult } from "@/lib/actions/owner/helpers";
 import { auth } from "@/lib/auth";
 
 export type BetActionResult<T = void> = OwnerActionResult<T>;
 
 function revalidateBetsPaths() {
+  invalidateLeagueRankIndex();
   revalidatePath("/bets");
   revalidatePath("/bets/bets");
   revalidatePath("/bets/punishments");
