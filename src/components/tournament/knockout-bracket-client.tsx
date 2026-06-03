@@ -12,6 +12,7 @@ import {
   setKnockoutWinnerAction,
 } from "@/lib/actions/owner/knockout-bracket";
 import { KnockoutBracketSkeleton } from "@/components/tournament/knockout-bracket-skeleton";
+import { MatchDetailModal } from "@/components/tournament/match-detail-modal";
 
 const KnockoutBracketView = dynamic(
   () =>
@@ -26,6 +27,7 @@ interface KnockoutBracketClientProps {
 export function KnockoutBracketClient({ editable = false }: KnockoutBracketClientProps) {
   const [data, setData] = useState<KnockoutBracketData | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [viewMatchId, setViewMatchId] = useState<string | null>(null);
   const dataRef = useRef<KnockoutBracketData | null>(null);
 
   useEffect(() => {
@@ -113,6 +115,11 @@ export function KnockoutBracketClient({ editable = false }: KnockoutBracketClien
         editable={editable}
         onAssignSlot={editable ? handleAssignSlot : undefined}
         onSetWinner={editable ? handleSetWinner : undefined}
+        onViewMatch={editable ? undefined : (matchId) => setViewMatchId(matchId)}
+      />
+      <MatchDetailModal
+        matchId={viewMatchId}
+        onClose={() => setViewMatchId(null)}
       />
     </>
   );

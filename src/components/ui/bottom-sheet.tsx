@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useCallback } from "react";
+import { useEffect, useCallback, useState } from "react";
+import { createPortal } from "react-dom";
 import { cn } from "@/lib/utils";
 
 interface BottomSheetProps {
@@ -11,6 +12,7 @@ interface BottomSheetProps {
   className?: string;
 }
 
+/** Portaled bottom sheet — always visible in viewport regardless of scroll containers. */
 export function BottomSheet({
   open,
   onClose,
@@ -18,6 +20,8 @@ export function BottomSheet({
   children,
   className,
 }: BottomSheetProps) {
+  const [mounted, setMounted] = useState(false);
+
   const handleEscape = useCallback(
     (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
@@ -25,21 +29,23 @@ export function BottomSheet({
     [onClose]
   );
 
+  useEffect(() => setMounted(true), []);
+
   useEffect(() => {
-    if (open) {
-      document.body.style.overflow = "hidden";
-      document.addEventListener("keydown", handleEscape);
-    }
+    if (!open) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    document.addEventListener("keydown", handleEscape);
     return () => {
-      document.body.style.overflow = "";
+      document.body.style.overflow = prev;
       document.removeEventListener("keydown", handleEscape);
     };
   }, [open, handleEscape]);
 
-  if (!open) return null;
+  if (!mounted || !open) return null;
 
-  return (
-    <div className={cn("fixed inset-0 z-[100] flex items-end justify-center", className)}>
+  return createPortal(
+    <div className={cn("fixed inset-0 z-[200] flex items-end justify-center", className)}>
       <button
         type="button"
         aria-label="Close"
@@ -65,6 +71,7 @@ export function BottomSheet({
         </div>
         <div className="px-5 pb-6">{children}</div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

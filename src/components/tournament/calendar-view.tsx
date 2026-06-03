@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { EmptyState } from "@/components/ui/card";
 import { MatchCard } from "@/components/tournament/match-card";
-import { MatchDetailSheet } from "@/components/tournament/match-detail-sheet";
+import { MatchDetailModal } from "@/components/tournament/match-detail-modal";
 import {
   formatKickoffDate,
   sameCalendarDay,
@@ -20,7 +20,7 @@ interface CalendarViewProps {
 
 export function CalendarView({ matches }: CalendarViewProps) {
   const [mode, setMode] = useState<ViewMode>("monthly");
-  const [selected, setSelected] = useState<TournamentMatchCard | null>(null);
+  const [selectedMatchId, setSelectedMatchId] = useState<string | null>(null);
 
   const sorted = useMemo(
     () => [...matches].sort((a, b) => a.scheduledAt.localeCompare(b.scheduledAt)),
@@ -91,7 +91,7 @@ export function CalendarView({ matches }: CalendarViewProps) {
         <section className="space-y-3">
           <h3 className="text-sm font-semibold text-[#00C853]">Today</h3>
           {todayMatches.map((m) => (
-            <MatchCard key={m.id} match={m} onClick={() => setSelected(m)} />
+            <MatchCard key={m.id} match={m} onClick={() => setSelectedMatchId(m.id)} />
           ))}
         </section>
       )}
@@ -102,16 +102,17 @@ export function CalendarView({ matches }: CalendarViewProps) {
             <h3 className="text-sm font-semibold text-white/70">{section.label}</h3>
             <div className="grid gap-3">
               {section.items.map((m) => (
-                <MatchCard key={m.id} match={m} onClick={() => setSelected(m)} compact />
+                <MatchCard key={m.id} match={m} onClick={() => setSelectedMatchId(m.id)} compact />
               ))}
             </div>
           </section>
         ))}
       </div>
 
-      {selected && (
-        <MatchDetailSheet match={selected} onClose={() => setSelected(null)} />
-      )}
+      <MatchDetailModal
+        matchId={selectedMatchId}
+        onClose={() => setSelectedMatchId(null)}
+      />
     </>
   );
 }

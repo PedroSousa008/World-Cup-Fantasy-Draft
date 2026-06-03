@@ -5,9 +5,9 @@ import { ChevronDown, ChevronRight, Lock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { EmptyState } from "@/components/ui/card";
 import { MatchCard } from "@/components/tournament/match-card";
-import { MatchDetailSheet } from "@/components/tournament/match-detail-sheet";
+import { MatchDetailModal } from "@/components/tournament/match-detail-modal";
 import { formatKickoff } from "@/lib/tournament/format";
-import type { MatchdayGroup, TournamentMatchCard } from "@/lib/tournament/types";
+import type { MatchdayGroup } from "@/lib/tournament/types";
 
 interface GamesViewProps {
   matchdayGroups: MatchdayGroup[];
@@ -15,7 +15,7 @@ interface GamesViewProps {
 
 export function GamesView({ matchdayGroups }: GamesViewProps) {
   const [expanded, setExpanded] = useState<Set<number>>(() => new Set(matchdayGroups.map((g) => g.matchday)));
-  const [selected, setSelected] = useState<TournamentMatchCard | null>(null);
+  const [selectedMatchId, setSelectedMatchId] = useState<string | null>(null);
 
   if (matchdayGroups.length === 0) {
     return (
@@ -73,16 +73,21 @@ export function GamesView({ matchdayGroups }: GamesViewProps) {
                 )}
               >
                 {group.matches.map((match) => (
-                  <MatchCard key={match.id} match={match} onClick={() => setSelected(match)} />
+                  <MatchCard
+                    key={match.id}
+                    match={match}
+                    onClick={() => setSelectedMatchId(match.id)}
+                  />
                 ))}
               </div>
             </section>
           );
         })}
       </div>
-      {selected && (
-        <MatchDetailSheet match={selected} onClose={() => setSelected(null)} />
-      )}
+      <MatchDetailModal
+        matchId={selectedMatchId}
+        onClose={() => setSelectedMatchId(null)}
+      />
     </>
   );
 }

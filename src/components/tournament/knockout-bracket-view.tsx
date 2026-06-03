@@ -20,6 +20,7 @@ interface KnockoutBracketViewProps {
   hintText?: string;
   onAssignSlot?: (slotKey: string, nationalTeamId: string | null) => Promise<void>;
   onSetWinner?: (matchKey: string, winnerNationalTeamId: string) => Promise<void>;
+  onViewMatch?: (matchId: string) => void;
 }
 
 export function KnockoutBracketView({
@@ -28,6 +29,7 @@ export function KnockoutBracketView({
   hintText,
   onAssignSlot,
   onSetWinner,
+  onViewMatch,
 }: KnockoutBracketViewProps) {
   const slotMap = useMemo(
     () => new Map(data.slots.map((s) => [s.slotKey, s])),
@@ -59,6 +61,9 @@ export function KnockoutBracketView({
             "Tap Round of 32 slots to add teams. Tap a match to pick the winner — or enter results under Matches (MD 4–8). Winners advance automatically."}
         </p>
       )}
+      {!editable && onViewMatch && (
+        <p className="text-sm text-white/55">Tap a match to view details.</p>
+      )}
 
       <div className="knockout-bracket-scroll overflow-x-auto overflow-y-hidden rounded-2xl border border-[#E53935]/30 bg-gradient-to-b from-[#0a1628] via-[#0d1f3c] to-[#081120] p-3 shadow-[inset_0_0_80px_rgba(0,40,100,0.35)] sm:p-4">
         <div className="knockout-bracket-inner flex min-w-[900px] items-stretch gap-0 pb-2">
@@ -71,6 +76,7 @@ export function KnockoutBracketView({
             nations={data.nations}
             onAssignSlot={onAssignSlot}
             onSetWinner={onSetWinner}
+            onViewMatch={onViewMatch}
           />
 
           <BracketCenter
@@ -81,6 +87,7 @@ export function KnockoutBracketView({
             nations={data.nations}
             onAssignSlot={onAssignSlot}
             onSetWinner={onSetWinner}
+            onViewMatch={onViewMatch}
           />
 
           <BracketSide
@@ -92,6 +99,7 @@ export function KnockoutBracketView({
             nations={data.nations}
             onAssignSlot={onAssignSlot}
             onSetWinner={onSetWinner}
+            onViewMatch={onViewMatch}
           />
         </div>
       </div>
@@ -108,6 +116,7 @@ function BracketSide({
   nations,
   onAssignSlot,
   onSetWinner,
+  onViewMatch,
 }: {
   side: "left" | "right";
   matchByKey: Map<string, BracketMatchState>;
@@ -117,6 +126,7 @@ function BracketSide({
   nations: BracketNation[];
   onAssignSlot?: (slotKey: string, nationalTeamId: string | null) => Promise<void>;
   onSetWinner?: (matchKey: string, winnerNationalTeamId: string) => Promise<void>;
+  onViewMatch?: (matchId: string) => void;
 }) {
   const columns = useMemo(() => {
     const cols = getBracketSideColumns(side);
@@ -153,6 +163,7 @@ function BracketSide({
                   nations={nations}
                   onAssignSlot={onAssignSlot}
                   onSetWinner={onSetWinner}
+                  onViewMatch={onViewMatch}
                 />
               );
             })}
@@ -182,6 +193,7 @@ function BracketCenter({
   nations,
   onAssignSlot,
   onSetWinner,
+  onViewMatch,
 }: {
   finalMatch?: BracketMatchState;
   championNation: BracketNation | null;
@@ -190,6 +202,7 @@ function BracketCenter({
   nations: BracketNation[];
   onAssignSlot?: (slotKey: string, nationalTeamId: string | null) => Promise<void>;
   onSetWinner?: (matchKey: string, winnerNationalTeamId: string) => Promise<void>;
+  onViewMatch?: (matchId: string) => void;
 }) {
   return (
     <div className="flex w-[130px] shrink-0 flex-col items-center justify-center gap-4 border-x border-[#E53935]/25 px-2">
@@ -203,6 +216,7 @@ function BracketCenter({
             compact
             onAssignSlot={onAssignSlot}
             onSetWinner={onSetWinner}
+            onViewMatch={onViewMatch}
           />
         )}
       </RoundColumn>
@@ -291,6 +305,7 @@ function MatchPair({
   compact,
   onAssignSlot,
   onSetWinner,
+  onViewMatch,
 }: {
   match: BracketMatchState;
   slotMap: Map<string, BracketSlotState>;
@@ -299,6 +314,7 @@ function MatchPair({
   compact?: boolean;
   onAssignSlot?: (slotKey: string, nationalTeamId: string | null) => Promise<void>;
   onSetWinner?: (matchKey: string, winnerNationalTeamId: string) => Promise<void>;
+  onViewMatch?: (matchId: string) => void;
 }) {
   const isR32 = match.round === "ROUND_OF_32";
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -309,18 +325,37 @@ function MatchPair({
     editable && match.homeTeamId && match.awayTeamId && !match.homeWaiting && !match.awayWaiting
   );
 
+  const canViewMatch = Boolean(
+    !editable &&
+      onViewMatch &&
+      match.matchId &&
+      match.homeTeamId &&
+      match.awayTeamId &&
+      !match.homeWaiting &&
+      !match.awayWaiting
+  );
+
+  const isInteractive = canPickWinner || canViewMatch;
+
   return (
     <div
       className={cn(
         "knockout-match-pair flex flex-col gap-0.5",
-        canPickWinner && "cursor-pointer"
+        isInteractive && "cursor-pointer"
       )}
-      onClick={() => canPickWinner && setWinnerOpen(true)}
-      onKeyDown={(e) => {
-        if (canPickWinner && (e.key === "Enter" || e.key === " ")) setWinnerOpen(true);
+      onClick={() => {
+        if (canPickWinner) setWinnerOpen(true);
+        else if (canViewMatch && match.matchId) onViewMatch!(match.matchId);
       }}
-      role={canPickWinner ? "button" : undefined}
-      tabIndex={canPickWinner ? 0 : undefined}
+      onKeyDown={(e) => {
+        if (!isInteractive) return;
+        if (e.key === "Enter" || e.key === " ") {
+          if (canPickWinner) setWinnerOpen(true);
+          else if (canViewMatch && match.matchId) onViewMatch!(match.matchId);
+        }
+      }}
+      role={isInteractive ? "button" : undefined}
+      tabIndex={isInteractive ? 0 : undefined}
     >
       <MatchTeamSlot
         nation={isR32 ? slotMap.get(match.homeSlot)?.nation ?? null : match.homeNation}
