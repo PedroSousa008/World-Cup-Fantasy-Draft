@@ -8,9 +8,11 @@ import { SegmentedControl } from "@/components/ui/segmented-control";
 import { SCORING_EVENT_TYPES } from "@/lib/scoring/constants";
 import {
   saveMatchResultAction,
+  saveMatchParticipationAction,
   resetMatchAction,
   toggleMatchBettingAction,
 } from "@/lib/actions/owner/matches";
+import { getParticipationTeams, type ParticipationTeam } from "@/lib/scoring/match-participation";
 import { getNationFlag } from "@/lib/nations";
 import { MobileFullScreenModal } from "@/components/ui/mobile-full-screen-modal";
 
@@ -52,6 +54,7 @@ interface OwnerMatchEditorProps {
     awayTeam: { id: string; name: string; flagEmoji: string | null };
   };
   events: { playerId: string; eventType: string }[];
+  participantIds: string[];
   players: PlayerOption[];
 }
 
@@ -80,12 +83,23 @@ function statusBadgeClass(status: string): string {
   }
 }
 
-export function OwnerMatchEditor({ match, events: initialEvents, players }: OwnerMatchEditorProps) {
+export function OwnerMatchEditor({
+  match,
+  events: initialEvents,
+  participantIds: initialParticipantIds,
+  players,
+}: OwnerMatchEditorProps) {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [resetOpen, setResetOpen] = useState(false);
   const [motmOpen, setMotmOpen] = useState(false);
+  const [participationOpen, setParticipationOpen] = useState(false);
+  const [participationTeams, setParticipationTeams] = useState<ParticipationTeam[]>([]);
+  const [selectedParticipantIds, setSelectedParticipantIds] = useState<Set<string>>(
+    () => new Set(initialParticipantIds)
+  );
+  const [participationSaved, setParticipationSaved] = useState(initialParticipantIds.length > 0);
 
   const [homeScore, setHomeScore] = useState(match.homeScore);
   const [awayScore, setAwayScore] = useState(match.awayScore);
@@ -101,6 +115,25 @@ export function OwnerMatchEditor({ match, events: initialEvents, players }: Owne
     [players, motmId]
   );
 
+  const participationNeeded = useMemo(
+    () =>
+      getParticipationTeams(
+        status,
+        homeScore,
+        awayScore,
+        match.homeTeam,
+        match.awayTeam
+      ),
+    [status, homeScore, awayScore, match.homeTeam, match.awayTeam]
+  );
+
+  const openParticipationPicker = () => {
+    if (participationNeeded) {
+      setParticipationTeams(participationNeeded);
+      setParticipationOpen(true);
+    }
+  };
+
   const matchMeta = useMemo(() => {
     const parts: string[] = [];
     if (match.matchday != null) parts.push(`MATCHDAY ${match.matchday}`);
@@ -115,6 +148,10 @@ export function OwnerMatchEditor({ match, events: initialEvents, players }: Owne
 
   const save = () => {
     setError(null);
+    if (status !== "FINISHED") {
+      setError("Set status to Finished for group tables and player points to update.");
+      return;
+    }
     startTransition(async () => {
       const result = await saveMatchResultAction({
         matchId: match.id,
@@ -129,6 +166,31 @@ export function OwnerMatchEditor({ match, events: initialEvents, players }: Owne
         setError(result.error);
         return;
       }
+      showSuccess();
+      if (result.data?.participationRequired?.length) {
+        setParticipationTeams(result.data.participationRequired);
+        setSelectedParticipantIds(new Set());
+        setParticipationSaved(false);
+        setParticipationOpen(true);
+      } else {
+        setParticipationSaved(true);
+      }
+    });
+  };
+
+  const confirmParticipation = () => {
+    setError(null);
+    startTransition(async () => {
+      const result = await saveMatchParticipationAction({
+        matchId: match.id,
+        playerIds: [...selectedParticipantIds],
+      });
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
+      setParticipationOpen(false);
+      setParticipationSaved(true);
       showSuccess();
     });
   };
@@ -146,6 +208,9 @@ export function OwnerMatchEditor({ match, events: initialEvents, players }: Owne
       setStatus("SCHEDULED");
       setMotmId("");
       setEvents([]);
+      setSelectedParticipantIds(new Set());
+      setParticipationSaved(false);
+      setParticipationOpen(false);
       setResetOpen(false);
       showSuccess();
     });
@@ -298,6 +363,28 @@ export function OwnerMatchEditor({ match, events: initialEvents, players }: Owne
         ))}
       </div>
 
+      {/* Participation status */}
+      {participationNeeded && !participationSaved && (
+        <div className="rounded-xl border border-amber-400/30 bg-amber-500/10 px-3 py-2.5">
+          <p className="text-xs text-amber-200">
+            Select which players participated to apply win (+2) and clean sheet (+4 GK/DEF)
+            bonuses.
+          </p>
+          <button
+            type="button"
+            onClick={openParticipationPicker}
+            className="mt-2 text-xs font-bold text-amber-100 underline"
+          >
+            Select played players
+          </button>
+        </div>
+      )}
+      {participationSaved && (
+        <p className="rounded-xl border border-emerald-400/30 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-200">
+          Player participation confirmed — win & clean sheet bonuses applied.
+        </p>
+      )}
+
       {error && (
         <p className="rounded-xl bg-red-500/15 px-3 py-2 text-sm font-semibold text-red-300">
           {error}
@@ -376,6 +463,24 @@ export function OwnerMatchEditor({ match, events: initialEvents, players }: Owne
           </Button>
         </div>
       </MobileFullScreenModal>
+
+      <ParticipationModal
+        open={participationOpen}
+        onClose={() => setParticipationOpen(false)}
+        teams={participationTeams}
+        players={players}
+        selectedIds={selectedParticipantIds}
+        onToggle={(id) => {
+          setSelectedParticipantIds((prev) => {
+            const next = new Set(prev);
+            if (next.has(id)) next.delete(id);
+            else next.add(id);
+            return next;
+          });
+        }}
+        onConfirm={confirmParticipation}
+        pending={pending}
+      />
     </div>
   );
 }
@@ -578,6 +683,97 @@ function PlayerSearchModal({
         {filtered.length === 0 && (
           <p className="py-4 text-center text-sm text-white/40">No players found.</p>
         )}
+      </div>
+    </MobileFullScreenModal>
+  );
+}
+
+function ParticipationModal({
+  open,
+  onClose,
+  teams,
+  players,
+  selectedIds,
+  onToggle,
+  onConfirm,
+  pending,
+}: {
+  open: boolean;
+  onClose: () => void;
+  teams: ParticipationTeam[];
+  players: PlayerOption[];
+  selectedIds: Set<string>;
+  onToggle: (id: string) => void;
+  onConfirm: () => void;
+  pending: boolean;
+}) {
+  if (teams.length === 0) return null;
+
+  return (
+    <MobileFullScreenModal
+      open={open}
+      onClose={onClose}
+      title="Select players who played"
+      subtitle="Win bonus (+2) applies to selected players. Clean sheet (+4) applies to selected GK/DEF only."
+    >
+      <div className="space-y-5">
+        {teams.map((team) => {
+          const teamPlayers = players.filter((p) => p.teamId === team.teamId);
+          const hasWin = team.reasons.includes("win");
+          const hasCs = team.reasons.includes("clean_sheet");
+          return (
+            <div key={team.teamId} className="space-y-2">
+              <div className="flex items-center gap-2">
+                <span className="text-xl">{team.flagEmoji ?? "🏳️"}</span>
+                <span className="font-bold text-white">{team.teamName}</span>
+              </div>
+              <p className="text-xs text-white/45">
+                {hasWin && hasCs && "Win + clean sheet bonuses"}
+                {hasWin && !hasCs && "Win bonus only"}
+                {!hasWin && hasCs && "Clean sheet bonus (GK/DEF only)"}
+              </p>
+              <div className="max-h-[40vh] space-y-1 overflow-y-auto rounded-xl bg-white/5 p-2">
+                {teamPlayers.map((p) => {
+                  const checked = selectedIds.has(p.id);
+                  const csEligible = p.position === "GK" || p.position === "DEF";
+                  return (
+                    <label
+                      key={p.id}
+                      className={cn(
+                        "flex cursor-pointer items-center gap-3 rounded-lg px-2 py-2 active:bg-white/10",
+                        checked && "bg-[#0066FF]/15"
+                      )}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={() => onToggle(p.id)}
+                        className="h-4 w-4 rounded border-white/30"
+                      />
+                      <span className="flex-1 font-medium text-white">{p.name}</span>
+                      <span className="text-xs text-white/45">
+                        {p.position}
+                        {hasCs && csEligible && " · CS"}
+                      </span>
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })}
+        <Button
+          type="button"
+          size="lg"
+          className="w-full"
+          isLoading={pending}
+          onClick={onConfirm}
+        >
+          Confirm participation
+        </Button>
+        <Button type="button" variant="ghost" size="lg" className="w-full" onClick={onClose}>
+          Cancel
+        </Button>
       </div>
     </MobileFullScreenModal>
   );

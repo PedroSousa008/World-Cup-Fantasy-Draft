@@ -5,6 +5,10 @@ import { z } from "zod";
 import { MatchStatus } from "@prisma/client";
 import { prisma } from "@/lib/db/prisma";
 import { SCORING_EVENT_TYPES } from "@/lib/scoring/constants";
+import {
+  getParticipationTeams,
+  type ParticipationTeam,
+} from "@/lib/scoring/match-participation";
 import type { OwnerActionResult } from "@/lib/actions/owner/helpers";
 import { requireOwnerSession } from "@/lib/actions/owner/helpers";
 
@@ -43,13 +47,21 @@ function revalidateTournament() {
   revalidatePath("/calendar/table/knockout-stage");
   revalidatePath("/owner/matches");
   revalidatePath("/owner/matches-events");
+  revalidatePath("/owner/matches-events/matches");
+  revalidatePath("/owner/matches-events/events/group-stage");
   revalidatePath("/my-team");
   revalidatePath("/bets");
+  revalidatePath("/predictions");
 }
+
+export type SaveMatchResultData = {
+  participationRequired: ParticipationTeam[] | null;
+  participantIds: string[];
+};
 
 export async function saveMatchResultAction(
   input: z.infer<typeof saveMatchSchema>
-): Promise<OwnerActionResult> {
+): Promise<OwnerActionResult<SaveMatchResultData>> {
   const owner = await requireOwnerSession();
   if (!owner) return { ok: false, error: "Unauthorized." };
 
@@ -113,6 +125,17 @@ export async function saveMatchResultAction(
         ...(bettingOpen !== undefined ? { bettingOpen } : {}),
       },
     });
+
+    const participationRequired = getParticipationTeams(
+      status,
+      homeScore,
+      awayScore,
+      match.homeTeam,
+      match.awayTeam
+    );
+    if (participationRequired) {
+      await tx.matchParticipant.deleteMany({ where: { matchId } });
+    }
   });
 
   if (wasKnockout) {
@@ -121,6 +144,82 @@ export async function saveMatchResultAction(
     );
     await onKnockoutMatchSaved(matchId);
   }
+
+  revalidateTournament();
+
+  const participationRequired = getParticipationTeams(
+    status,
+    homeScore,
+    awayScore,
+    match.homeTeam,
+    match.awayTeam
+  );
+
+  return {
+    ok: true,
+    data: {
+      participationRequired,
+      participantIds: [],
+    },
+  };
+}
+
+const participationSchema = z.object({
+  matchId: z.string().min(1),
+  playerIds: z.array(z.string().min(1)),
+});
+
+export async function saveMatchParticipationAction(
+  input: z.infer<typeof participationSchema>
+): Promise<OwnerActionResult> {
+  const owner = await requireOwnerSession();
+  if (!owner) return { ok: false, error: "Unauthorized." };
+
+  const parsed = participationSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: "Invalid participation data." };
+
+  const { matchId, playerIds } = parsed.data;
+
+  const match = await prisma.match.findUnique({
+    where: { id: matchId },
+    include: { homeTeam: true, awayTeam: true },
+  });
+  if (!match) return { ok: false, error: "Match not found." };
+  if (match.status !== "FINISHED" || match.homeScore == null || match.awayScore == null) {
+    return { ok: false, error: "Match must be finished before setting participation." };
+  }
+
+  const teams = getParticipationTeams(
+    match.status,
+    match.homeScore,
+    match.awayScore,
+    match.homeTeam,
+    match.awayTeam
+  );
+  if (!teams) {
+    return { ok: false, error: "This match does not require participation selection." };
+  }
+
+  const allowedTeamIds = new Set(teams.map((t) => t.teamId));
+  for (const playerId of playerIds) {
+    const player = await prisma.player.findUnique({
+      where: { id: playerId },
+      select: { nationalTeamId: true },
+    });
+    if (!player?.nationalTeamId || !allowedTeamIds.has(player.nationalTeamId)) {
+      return { ok: false, error: "All selected players must be from the required team(s)." };
+    }
+  }
+
+  await prisma.$transaction(async (tx) => {
+    await tx.matchParticipant.deleteMany({ where: { matchId } });
+    if (playerIds.length > 0) {
+      await tx.matchParticipant.createMany({
+        data: playerIds.map((playerId) => ({ matchId, playerId })),
+        skipDuplicates: true,
+      });
+    }
+  });
 
   revalidateTournament();
   return { ok: true };
@@ -137,6 +236,7 @@ export async function resetMatchAction(matchId: string): Promise<OwnerActionResu
 
   await prisma.$transaction(async (tx) => {
     await tx.matchEvent.deleteMany({ where: { matchId } });
+    await tx.matchParticipant.deleteMany({ where: { matchId } });
     await tx.match.update({
       where: { id: matchId },
       data: {

@@ -1,9 +1,7 @@
-import { TableView } from "@/components/tournament/table-view";
-import { getGroupTablesData } from "@/lib/tournament/get-tournament-data";
+import { GroupStageTablesClient } from "@/components/tournament/group-stage-tables-client";
 
 export const dynamic = "force-dynamic";
 
-export default async function CalendarTableGroupStagePage() {
-  const { tables, bestThird } = await getGroupTablesData();
-  return <TableView tables={tables} bestThird={bestThird} />;
+export default function CalendarTableGroupStagePage() {
+  return <GroupStageTablesClient />;
 }

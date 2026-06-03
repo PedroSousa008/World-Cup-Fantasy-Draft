@@ -28,6 +28,7 @@ export default async function OwnerMatchesEventsMatchEditPage({ params }: PagePr
       <OwnerMatchEditor
         match={data.match}
         events={data.events}
+        participantIds={data.participantIds}
         players={data.players}
       />
     </div>

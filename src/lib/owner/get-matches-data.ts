@@ -64,9 +64,14 @@ export async function getOwnerMatchEditData(matchId: string) {
       id: e.id,
       playerId: e.playerId ?? "",
       eventType: e.eventType,
-      minute: e.minute,
       playerName: e.player?.name ?? "",
     })),
+    participantIds: (
+      await prisma.matchParticipant.findMany({
+        where: { matchId: match.id },
+        select: { playerId: true },
+      })
+    ).map((p) => p.playerId),
     players: players.map((p) => ({
       id: p.id,
       name: p.name,

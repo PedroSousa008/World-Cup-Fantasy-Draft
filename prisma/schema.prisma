@@ -254,6 +254,7 @@ model Player {
   fantasySlots FantasyTeamPlayer[]
   matchEvents  MatchEvent[]
   motmMatches  Match[]          @relation("MotmPlayer")
+  matchParticipants MatchParticipant[]
   savedBy      SavedPlayer[]
 
   @@index([nationalTeamId])
@@ -283,6 +284,7 @@ model Match {
 
   events MatchEvent[]
   bets   Bet[]
+  participants MatchParticipant[]
 
   @@index([matchday])
   @@index([groupName])
@@ -321,6 +323,19 @@ model MatchEvent {
   minute    Int?
   createdAt DateTime @default(now())
 
+  @@index([matchId])
+  @@index([playerId])
+}
+
+/// Players who participated (for win / clean sheet bonuses).
+model MatchParticipant {
+  id       String @id @default(cuid())
+  matchId  String
+  match    Match  @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  playerId String
+  player   Player @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  @@unique([matchId, playerId])
   @@index([matchId])
   @@index([playerId])
 }
