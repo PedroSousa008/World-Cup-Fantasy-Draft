@@ -1,7 +1,6 @@
 import { prisma } from "@/lib/db/prisma";
 import type { OwnerMatchOption, PromotedMatchBetDto } from "@/lib/bets/types";
 import { getMatchBetsData } from "@/lib/bets/get-match-bets-data";
-import { UserRole } from "@prisma/client";
 
 export async function getOwnerBetsManagementData(ownerId: string) {
   const [matches, promotedIds, betsPayload] = await Promise.all([
@@ -14,7 +13,7 @@ export async function getOwnerBetsManagementData(ownerId: string) {
       orderBy: [{ matchday: "asc" }, { scheduledAt: "asc" }],
     }),
     prisma.ownerPromotedMatchBet.findMany({ select: { matchId: true } }),
-    getMatchBetsData(ownerId, UserRole.OWNER),
+    getMatchBetsData(ownerId, { includeVoteStats: true }),
   ]);
 
   const promotedSet = new Set(promotedIds.map((p) => p.matchId));

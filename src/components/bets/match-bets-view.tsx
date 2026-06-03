@@ -9,15 +9,17 @@ import { cn } from "@/lib/utils";
 
 interface MatchBetsViewProps {
   initial: MatchBetsPayload;
+  /** Set on server from platform owner check — never from poll/API. */
+  showVoteStats: boolean;
 }
 
-export function MatchBetsView({ initial }: MatchBetsViewProps) {
+export function MatchBetsView({ initial, showVoteStats }: MatchBetsViewProps) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const { data, refresh } = usePollJson<MatchBetsPayload>("/api/bets/match-bets", 15_000);
 
   const payload = data ?? initial;
-  const { bets, isOwner } = payload;
+  const { bets } = payload;
 
   const submitPick = (promotedBetId: string, pickedTeamId: string) => {
     startTransition(() => {
@@ -116,7 +118,7 @@ export function MatchBetsView({ initial }: MatchBetsViewProps) {
               </div>
             )}
 
-            {isOwner && (
+            {showVoteStats && (
               <div className="mt-4 space-y-1 border-t border-[#081120]/8 pt-3 text-sm text-[#081120]/70">
                 <div className="flex justify-between">
                   <span>{bet.homeTeamName}</span>

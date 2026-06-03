@@ -64,3 +64,18 @@ export async function assertAuthenticated(userId: string | undefined): Promise<s
 export function isOwnerRole(role: UserRole | string | undefined): boolean {
   return role === UserRole.OWNER;
 }
+
+/** True only for the single platform Owner account (role + platformSettings.ownerId). */
+export async function isPlatformOwner(userId: string): Promise<boolean> {
+  const settings = await getPlatformSettings();
+  if (!settings.ownerCreated || settings.ownerId !== userId) {
+    return false;
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { role: true },
+  });
+
+  return user?.role === UserRole.OWNER;
+}

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
-import { UserRole } from "@prisma/client";
+import { isPlatformOwner } from "@/lib/auth/permissions";
 import { OwnerBetsManagementPanel } from "@/components/owner/owner-bets-management-panel";
 import { PageHeader } from "@/components/layout/section-page";
 import { getOwnerBetsManagementData } from "@/lib/bets/get-owner-bets-management-data";
@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic";
 
 export default async function OwnerBetsManagementPage() {
   const session = await auth();
-  if (!session?.user || session.user.role !== UserRole.OWNER) {
+  if (!session?.user || !(await isPlatformOwner(session.user.id))) {
     redirect("/my-team");
   }
 

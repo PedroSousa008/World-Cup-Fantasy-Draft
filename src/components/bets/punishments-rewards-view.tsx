@@ -8,27 +8,30 @@ import {
   deleteRankingOutcomeRowAction,
   upsertRankingOutcomeRowAction,
 } from "@/lib/actions/bets";
-import type { PunishmentsRewardsPayload } from "@/lib/bets/types";
+import type { PunishmentsRewardsPollPayload } from "@/lib/bets/types";
 import { usePollJson } from "@/hooks/use-poll-json";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 interface PunishmentsRewardsViewProps {
-  initial: PunishmentsRewardsPayload;
+  initial: PunishmentsRewardsPollPayload;
+  /** Set on server from platform owner check — never from poll/API. */
+  canEdit: boolean;
 }
 
-export function PunishmentsRewardsView({ initial }: PunishmentsRewardsViewProps) {
+export function PunishmentsRewardsView({ initial, canEdit }: PunishmentsRewardsViewProps) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
-  const { data, refresh } = usePollJson<PunishmentsRewardsPayload>(
+  const { data, refresh } = usePollJson<PunishmentsRewardsPollPayload>(
     "/api/bets/punishments-rewards",
     15_000
   );
 
   const payload = data ?? initial;
-  const { rows, currentUserRank, isOwner } = payload;
+  const { rows, currentUserRank } = payload;
 
   const saveRow = (position: number, text: string) => {
+    if (!canEdit) return;
     startTransition(() => {
       void upsertRankingOutcomeRowAction({ position, text }).then((result) => {
         if (result.ok) {
@@ -40,6 +43,7 @@ export function PunishmentsRewardsView({ initial }: PunishmentsRewardsViewProps)
   };
 
   const addRow = () => {
+    if (!canEdit) return;
     startTransition(() => {
       void addRankingOutcomeRowAction().then((result) => {
         if (result.ok) {
@@ -51,6 +55,7 @@ export function PunishmentsRewardsView({ initial }: PunishmentsRewardsViewProps)
   };
 
   const removeRow = (position: number) => {
+    if (!canEdit) return;
     startTransition(() => {
       void deleteRankingOutcomeRowAction(position).then((result) => {
         if (result.ok) {
@@ -64,8 +69,9 @@ export function PunishmentsRewardsView({ initial }: PunishmentsRewardsViewProps)
   return (
     <div className="space-y-4">
       <p className="text-sm text-white/50">
-        Rewards and punishments by final ranking position. Your current league rank is
-        highlighted automatically.
+        {canEdit
+          ? "Edit rewards and punishments by ranking position. Changes sync to all users automatically."
+          : "Rewards and punishments by final ranking position. Your current league rank is highlighted."}
       </p>
 
       <div className="overflow-hidden rounded-2xl ring-1 ring-white/10">
@@ -96,7 +102,7 @@ export function PunishmentsRewardsView({ initial }: PunishmentsRewardsViewProps)
                   {row.position}
                 </div>
                 <div className="flex min-w-0 items-center gap-2 px-3 py-2">
-                  {isOwner ? (
+                  {canEdit ? (
                     <>
                       <input
                         type="text"
@@ -140,7 +146,7 @@ export function PunishmentsRewardsView({ initial }: PunishmentsRewardsViewProps)
         </ul>
       </div>
 
-      {isOwner && (
+      {canEdit && (
         <Button
           type="button"
           variant="outline"

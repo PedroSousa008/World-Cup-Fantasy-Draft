@@ -33,7 +33,7 @@ export async function upsertRankingOutcomeRowAction(input: {
   text: string;
 }): Promise<BetActionResult> {
   const owner = await requireOwnerSession();
-  if (!owner) return { ok: false, error: "Owner access required." };
+  if (!owner) return { ok: false, error: "Forbidden: platform Owner only." };
 
   if (!Number.isInteger(input.position) || input.position < 1) {
     return { ok: false, error: "Invalid position." };
@@ -55,7 +55,7 @@ export async function addRankingOutcomeRowAction(): Promise<
   BetActionResult<{ position: number }>
 > {
   const owner = await requireOwnerSession();
-  if (!owner) return { ok: false, error: "Owner access required." };
+  if (!owner) return { ok: false, error: "Forbidden: platform Owner only." };
 
   await ensureRankingOutcomeRows();
 
@@ -74,7 +74,7 @@ export async function deleteRankingOutcomeRowAction(
   position: number
 ): Promise<BetActionResult> {
   const owner = await requireOwnerSession();
-  if (!owner) return { ok: false, error: "Owner access required." };
+  if (!owner) return { ok: false, error: "Forbidden: platform Owner only." };
 
   const count = await prisma.rankingOutcomeRow.count();
   if (count <= 1) {
@@ -93,7 +93,7 @@ export async function createPromotedMatchBetAction(input: {
   awayOdd: string;
 }): Promise<BetActionResult<{ betId: string }>> {
   const owner = await requireOwnerSession();
-  if (!owner) return { ok: false, error: "Owner access required." };
+  if (!owner) return { ok: false, error: "Forbidden: platform Owner only." };
 
   const homeOdd = normalizeOdd(input.homeOdd);
   const awayOdd = normalizeOdd(input.awayOdd);
@@ -134,7 +134,7 @@ export async function updatePromotedMatchBetOddsAction(input: {
   awayOdd: string;
 }): Promise<BetActionResult> {
   const owner = await requireOwnerSession();
-  if (!owner) return { ok: false, error: "Owner access required." };
+  if (!owner) return { ok: false, error: "Forbidden: platform Owner only." };
 
   const homeOdd = normalizeOdd(input.homeOdd);
   const awayOdd = normalizeOdd(input.awayOdd);
@@ -153,7 +153,7 @@ export async function updatePromotedMatchBetOddsAction(input: {
 
 export async function removePromotedMatchBetAction(betId: string): Promise<BetActionResult> {
   const owner = await requireOwnerSession();
-  if (!owner) return { ok: false, error: "Owner access required." };
+  if (!owner) return { ok: false, error: "Forbidden: platform Owner only." };
 
   await prisma.ownerPromotedMatchBet.delete({ where: { id: betId } });
 

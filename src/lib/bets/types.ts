@@ -6,8 +6,10 @@ export interface RankingOutcomeRowDto {
 export interface PunishmentsRewardsPayload {
   rows: RankingOutcomeRowDto[];
   currentUserRank: number | null;
-  isOwner: boolean;
 }
+
+/** Poll/API payload — never includes edit permissions (set on server only). */
+export type PunishmentsRewardsPollPayload = PunishmentsRewardsPayload;
 
 export interface MatchBetVoteStats {
   homeVotes: number;
@@ -35,7 +37,6 @@ export interface PromotedMatchBetDto {
 
 export interface MatchBetsPayload {
   bets: PromotedMatchBetDto[];
-  isOwner: boolean;
 }
 
 export interface OwnerMatchOption {

@@ -1,5 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
+import { isPlatformOwner } from "@/lib/auth/permissions";
 import { SubTabs } from "@/components/layout/sub-tabs";
 import { PageHeader } from "@/components/layout/section-page";
 import { MatchBetsView } from "@/components/bets/match-bets-view";
@@ -22,6 +23,8 @@ export default async function BetsTabPage({ params }: PageProps) {
   const validTab = BETS_TABS.find((t) => t.slug === tab);
   if (!validTab) notFound();
 
+  const canManage = await isPlatformOwner(session.user.id);
+
   return (
     <div className="space-y-6 overflow-x-hidden pb-8">
       <PageHeader
@@ -32,9 +35,9 @@ export default async function BetsTabPage({ params }: PageProps) {
       <SubTabs tabs={BETS_TABS} activeTab={tab} basePath="/bets" accent="red" />
 
       {tab === "bets" ? (
-        <BetsTabContent userId={session.user.id} role={session.user.role} />
+        <BetsTabContent userId={session.user.id} showVoteStats={canManage} />
       ) : (
-        <PunishmentsTabContent userId={session.user.id} role={session.user.role} />
+        <PunishmentsTabContent userId={session.user.id} canEdit={canManage} />
       )}
     </div>
   );
@@ -42,12 +45,12 @@ export default async function BetsTabPage({ params }: PageProps) {
 
 async function BetsTabContent({
   userId,
-  role,
+  showVoteStats,
 }: {
   userId: string;
-  role: import("@prisma/client").UserRole;
+  showVoteStats: boolean;
 }) {
-  const data = await getMatchBetsData(userId, role);
+  const data = await getMatchBetsData(userId, { includeVoteStats: showVoteStats });
 
   return (
     <div className="space-y-4">
@@ -55,29 +58,31 @@ async function BetsTabContent({
         <h2 className="text-display text-xl">Bets</h2>
         <p className="text-body text-sm">Pick one team per match. Odds are set by the Owner.</p>
       </div>
-      <MatchBetsView initial={data} />
+      <MatchBetsView initial={data} showVoteStats={showVoteStats} />
     </div>
   );
 }
 
 async function PunishmentsTabContent({
   userId,
-  role,
+  canEdit,
 }: {
   userId: string;
-  role: import("@prisma/client").UserRole;
+  canEdit: boolean;
 }) {
-  const data = await getPunishmentsRewardsData(userId, role);
+  const data = await getPunishmentsRewardsData(userId);
 
   return (
     <div className="space-y-4">
       <div>
         <h2 className="text-display text-xl">Punishments & Rewards</h2>
         <p className="text-body text-sm">
-          See what applies at each ranking position. Your current rank is highlighted.
+          {canEdit
+            ? "Manage outcomes by ranking position. Users see updates live."
+            : "See what applies at each ranking position. Your current rank is highlighted."}
         </p>
       </div>
-      <PunishmentsRewardsView initial={data} />
+      <PunishmentsRewardsView initial={data} canEdit={canEdit} />
     </div>
   );
 }
