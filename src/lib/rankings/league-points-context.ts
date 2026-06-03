@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db/prisma";
 import { loadPowerScoringContext } from "@/lib/powers/scoring-context";
 import { MATCHDAY_COUNT } from "@/lib/scoring/constants";
+import { getMatchPredictionPointsByUser } from "@/lib/predictions/settle-match-predictions";
 import {
   buildPowerPointsIndex,
   type PowerPointsIndex,
@@ -12,6 +13,7 @@ export interface LeagueUserPointsRow {
   teamName: string;
   selectedNation: string;
   manualPointsAdjustment: number;
+  predictionPoints: number;
 }
 
 export interface LeaguePointsContext {
@@ -24,7 +26,8 @@ export interface LeaguePointsContext {
 export async function loadLeaguePointsContext(): Promise<LeaguePointsContext> {
   const matchdays = Array.from({ length: MATCHDAY_COUNT }, (_, i) => i + 1);
 
-  const [scoringCtx, users, allPowers, allRivals] = await Promise.all([
+  const [scoringCtx, users, allPowers, allRivals, predictionPointsByUser] =
+    await Promise.all([
     loadPowerScoringContext(),
     prisma.user.findMany({
       select: {
@@ -44,6 +47,7 @@ export async function loadLeaguePointsContext(): Promise<LeaguePointsContext> {
     prisma.rivalChallenge.findMany({
       where: { status: "USED" },
     }),
+    getMatchPredictionPointsByUser(),
   ]);
 
   const powerIndex = buildPowerPointsIndex(allPowers, allRivals);
@@ -57,6 +61,7 @@ export async function loadLeaguePointsContext(): Promise<LeaguePointsContext> {
       teamName: user.teamName,
       selectedNation: user.selectedNation,
       manualPointsAdjustment: user.manualPointsAdjustment,
+      predictionPoints: predictionPointsByUser.get(user.id) ?? 0,
     })),
   };
 }

@@ -8,6 +8,7 @@ import { WORLD_CUP_NATIONS } from "@/lib/nations/world-cup-nations";
 import type { OwnerActionResult } from "@/lib/actions/owner/helpers";
 import { requireOwnerSession } from "@/lib/actions/owner/helpers";
 import { getOwnerUserAutomaticPoints } from "@/lib/owner/get-users-data";
+import { getUserMatchPredictionPoints } from "@/lib/predictions/settle-match-predictions";
 
 const NATION_NAMES = new Set(WORLD_CUP_NATIONS.map((n) => n.name));
 
@@ -51,7 +52,8 @@ export async function updateOwnerUserAction(
   const automaticPoints = await getOwnerUserAutomaticPoints(userId);
   if (automaticPoints == null) return { ok: false, error: "User not found." };
 
-  const manualPointsAdjustment = totalPoints - automaticPoints;
+  const predictionPoints = await getUserMatchPredictionPoints(userId);
+  const manualPointsAdjustment = totalPoints - automaticPoints - predictionPoints;
 
   try {
     await prisma.user.update({

@@ -23,17 +23,24 @@ export function computeUserAutomaticPoints(
 
 export function computeUserTotalPoints(
   automaticPoints: number,
-  manualPointsAdjustment: number
+  manualPointsAdjustment: number,
+  predictionPoints = 0
 ): number {
-  return automaticPoints + manualPointsAdjustment;
+  return automaticPoints + manualPointsAdjustment + predictionPoints;
 }
 
 export function computeUserLeaguePointsFromContext(
   userId: string,
   ctx: LeaguePointsContext
-): { automaticPoints: number; manualPointsAdjustment: number; totalPoints: number } {
+): {
+  automaticPoints: number;
+  manualPointsAdjustment: number;
+  predictionPoints: number;
+  totalPoints: number;
+} {
   const user = ctx.users.find((row) => row.id === userId);
   const manualPointsAdjustment = user?.manualPointsAdjustment ?? 0;
+  const predictionPoints = user?.predictionPoints ?? 0;
   const automaticPoints = computeUserAutomaticPoints(
     userId,
     ctx.matchdays,
@@ -43,7 +50,12 @@ export function computeUserLeaguePointsFromContext(
   return {
     automaticPoints,
     manualPointsAdjustment,
-    totalPoints: computeUserTotalPoints(automaticPoints, manualPointsAdjustment),
+    predictionPoints,
+    totalPoints: computeUserTotalPoints(
+      automaticPoints,
+      manualPointsAdjustment,
+      predictionPoints
+    ),
   };
 }
 

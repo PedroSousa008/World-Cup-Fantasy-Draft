@@ -5,6 +5,7 @@ import {
   computeUserTotalPoints,
 } from "@/lib/rankings/user-total-points";
 import type { UserRole } from "@prisma/client";
+import { getMatchPredictionPointsByUser } from "@/lib/predictions/settle-match-predictions";
 
 export interface OwnerUserRow {
   id: string;
@@ -18,7 +19,7 @@ export interface OwnerUserRow {
 }
 
 export async function getOwnerUsersData(): Promise<OwnerUserRow[]> {
-  const [ctx, users] = await Promise.all([
+  const [ctx, users, predictionPointsByUser] = await Promise.all([
     loadLeaguePointsContext(),
     prisma.user.findMany({
       select: {
@@ -31,6 +32,7 @@ export async function getOwnerUsersData(): Promise<OwnerUserRow[]> {
       },
       orderBy: { teamName: "asc" },
     }),
+    getMatchPredictionPointsByUser(),
   ]);
 
   return users.map((user) => {
@@ -41,6 +43,7 @@ export async function getOwnerUsersData(): Promise<OwnerUserRow[]> {
       ctx.powerIndex
     );
     const manualPointsAdjustment = user.manualPointsAdjustment;
+    const predictionPoints = predictionPointsByUser.get(user.id) ?? 0;
     return {
       id: user.id,
       username: user.username,
@@ -49,7 +52,11 @@ export async function getOwnerUsersData(): Promise<OwnerUserRow[]> {
       role: user.role,
       automaticPoints,
       manualPointsAdjustment,
-      totalPoints: computeUserTotalPoints(automaticPoints, manualPointsAdjustment),
+      totalPoints: computeUserTotalPoints(
+        automaticPoints,
+        manualPointsAdjustment,
+        predictionPoints
+      ),
     };
   });
 }

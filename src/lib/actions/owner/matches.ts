@@ -145,6 +145,11 @@ export async function saveMatchResultAction(
     await onKnockoutMatchSaved(matchId);
   }
 
+  const { settleMatchPredictions } = await import(
+    "@/lib/predictions/settle-match-predictions"
+  );
+  await settleMatchPredictions(matchId);
+
   revalidateTournament();
 
   const participationRequired = getParticipationTeams(
@@ -255,6 +260,11 @@ export async function resetMatchAction(matchId: string): Promise<OwnerActionResu
     );
     await recomputeKnockoutBracket();
   }
+
+  const { settleMatchPredictions } = await import(
+    "@/lib/predictions/settle-match-predictions"
+  );
+  await settleMatchPredictions(matchId);
 
   revalidateTournament();
   return { ok: true };

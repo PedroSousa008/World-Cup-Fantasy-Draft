@@ -68,7 +68,11 @@ export async function getRankingsData(currentUserTeamName: string): Promise<Rank
       userId: user.id,
       teamName: user.teamName,
       nation: user.selectedNation,
-      points: computeUserTotalPoints(automaticPoints, user.manualPointsAdjustment),
+      points: computeUserTotalPoints(
+        automaticPoints,
+        user.manualPointsAdjustment,
+        user.predictionPoints
+      ),
     };
   });
 

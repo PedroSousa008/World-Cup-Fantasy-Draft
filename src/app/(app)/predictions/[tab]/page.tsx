@@ -6,7 +6,7 @@ import { PREDICTIONS_TABS } from "@/lib/navigation";
 import { GroupStagePredictionsClient } from "@/components/predictions/group-stage-predictions-client";
 import { MatchPredictionsClient } from "@/components/predictions/match-predictions-client";
 import { getTournamentPredictionsData } from "@/lib/predictions/get-tournament-predictions-data";
-import { getMatchesByMatchday } from "@/lib/tournament/get-tournament-data";
+import { getMatchPredictionsPageData } from "@/lib/predictions/get-match-predictions-data";
 
 export const dynamic = "force-dynamic";
 
@@ -43,14 +43,14 @@ export default async function PredictionsTabPage({ params }: PageProps) {
   }
 
   if (tab === "matches") {
-    const matchdayGroups = await getMatchesByMatchday();
+    const { matchdayGroups } = await getMatchPredictionsPageData(session.user.id);
 
     return (
       <div className="space-y-6 overflow-x-hidden">
         <SubTabs tabs={PREDICTIONS_TABS} activeTab={tab} basePath="/predictions" accent="blue" />
         <PageHeader
-          title="Match Predictions"
-          description="Predict individual match outcomes — scoring coming later."
+          title="Games"
+          description="Submit your predictions before the deadline! Earn +5 points for every exact score predicted correctly."
         />
         <MatchPredictionsClient matchdayGroups={matchdayGroups} />
       </div>
