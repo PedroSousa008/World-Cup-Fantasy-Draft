@@ -12,7 +12,10 @@ export async function getOwnerBetsManagementData(ownerId: string) {
       },
       orderBy: [{ matchday: "asc" }, { scheduledAt: "asc" }],
     }),
-    prisma.ownerPromotedMatchBet.findMany({ select: { matchId: true } }),
+    prisma.ownerPromotedMatchBet.findMany({
+      where: { isActive: true },
+      select: { matchId: true },
+    }),
     getMatchBetsData(ownerId, { includeVoteStats: true }),
   ]);
 

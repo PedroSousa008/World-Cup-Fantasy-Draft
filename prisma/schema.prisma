@@ -66,6 +66,17 @@ enum BetType {
   CUSTOM
 }
 
+enum PromotedMatchBetStatus {
+  VOTING_OPEN
+  ODDS_PUBLISHED
+}
+
+enum MatchBetPick {
+  HOME
+  DRAW
+  AWAY
+}
+
 enum StakeType {
   POINTS
   MONEY
@@ -588,21 +599,24 @@ model RankingOutcomeRow {
   updatedAt DateTime @updatedAt
 }
 
-/// Owner-promoted match for league voting (manual odds only).
+/// Owner-promoted match for league voting (votes first, optional manual odds later).
 model OwnerPromotedMatchBet {
-  id          String   @id @default(cuid())
-  matchId     String   @unique
-  match       Match    @relation(fields: [matchId], references: [id], onDelete: Cascade)
-  homeOdd     String
-  awayOdd     String
+  id          String                  @id @default(cuid())
+  matchId     String                  @unique
+  match       Match                   @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  status      PromotedMatchBetStatus  @default(VOTING_OPEN)
+  homeOdd     String?
+  drawOdd     String?
+  awayOdd     String?
   createdById String
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  isActive    Boolean                 @default(true)
+  createdAt   DateTime                @default(now())
+  updatedAt   DateTime                @updatedAt
 
   votes MatchBetVote[]
 
   @@index([isActive])
+  @@index([status])
 }
 
 model MatchBetVote {
@@ -611,7 +625,7 @@ model MatchBetVote {
   promotedBet   OwnerPromotedMatchBet @relation(fields: [promotedBetId], references: [id], onDelete: Cascade)
   userId        String
   user          User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
-  pickedTeamId  String
+  pick          MatchBetPick
   submittedAt   DateTime              @default(now())
   updatedAt     DateTime              @updatedAt
 

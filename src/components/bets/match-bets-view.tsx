@@ -1,9 +1,8 @@
 "use client";
 
 import { useTransition } from "react";
-import { useRouter } from "next/navigation";
 import { submitMatchBetVoteAction } from "@/lib/actions/bets";
-import type { MatchBetsPayload } from "@/lib/bets/types";
+import type { MatchBetPick, MatchBetsPayload } from "@/lib/bets/types";
 import { usePollJson } from "@/hooks/use-poll-json";
 import { cn } from "@/lib/utils";
 
@@ -14,20 +13,16 @@ interface MatchBetsViewProps {
 }
 
 export function MatchBetsView({ initial, showVoteStats }: MatchBetsViewProps) {
-  const router = useRouter();
   const [pending, startTransition] = useTransition();
-  const { data, refresh } = usePollJson<MatchBetsPayload>("/api/bets/match-bets", 15_000);
+  const { data, refresh } = usePollJson<MatchBetsPayload>("/api/bets/match-bets", 10_000);
 
   const payload = data ?? initial;
   const { bets } = payload;
 
-  const submitPick = (promotedBetId: string, pickedTeamId: string) => {
+  const submitPick = (promotedBetId: string, pick: MatchBetPick) => {
     startTransition(() => {
-      void submitMatchBetVoteAction({ promotedBetId, pickedTeamId }).then((result) => {
-        if (result.ok) {
-          void refresh();
-          router.refresh();
-        }
+      void submitMatchBetVoteAction({ promotedBetId, pick }).then((result) => {
+        if (result.ok) void refresh();
       });
     });
   };
@@ -46,8 +41,9 @@ export function MatchBetsView({ initial, showVoteStats }: MatchBetsViewProps) {
   return (
     <div className="space-y-4">
       {bets.map((bet) => {
-        const hasPick = !!bet.userPickTeamId;
+        const hasPick = bet.userPick != null;
         const matchLabel = `${bet.homeTeamName} vs ${bet.awayTeamName}`;
+        const votingOpen = bet.status === "VOTING_OPEN";
 
         return (
           <article
@@ -57,64 +53,84 @@ export function MatchBetsView({ initial, showVoteStats }: MatchBetsViewProps) {
             <div className="mb-3">
               <p className="text-xs font-bold uppercase tracking-wide text-[#081120]/40">
                 {bet.matchday != null ? `MD${bet.matchday}` : "Match"}
+                {!votingOpen && (
+                  <span className="ml-2 text-[#0066FF]">· Odds published</span>
+                )}
               </p>
               <h3 className="text-lg font-bold text-[#081120]">{matchLabel}</h3>
             </div>
 
-            <div className="mb-4 grid grid-cols-2 gap-3">
-              <div className="rounded-xl bg-[#081120]/5 px-3 py-2.5 text-center">
-                <p className="text-sm font-bold text-[#081120]">
-                  {bet.homeTeamFlag && <span className="mr-1">{bet.homeTeamFlag}</span>}
-                  {bet.homeTeamName}
-                </p>
-                <p className="mt-1 text-xs text-[#081120]/50">
-                  Odd: <span className="font-bold text-[#0066FF]">{bet.homeOdd}</span>
-                </p>
-              </div>
-              <div className="rounded-xl bg-[#081120]/5 px-3 py-2.5 text-center">
-                <p className="text-sm font-bold text-[#081120]">
-                  {bet.awayTeamFlag && <span className="mr-1">{bet.awayTeamFlag}</span>}
-                  {bet.awayTeamName}
-                </p>
-                <p className="mt-1 text-xs text-[#081120]/50">
-                  Odd: <span className="font-bold text-[#0066FF]">{bet.awayOdd}</span>
-                </p>
-              </div>
-            </div>
-
-            {hasPick ? (
-              <div className="rounded-xl bg-[#00C853]/10 px-4 py-3 text-center ring-1 ring-[#00C853]/25">
-                <p className="text-xs font-bold uppercase tracking-wide text-[#00C853]">
-                  Bet Submitted
-                </p>
-                <p className="mt-1 text-sm font-bold text-[#081120]">
-                  Your Pick: {bet.userPickTeamName}
-                </p>
-              </div>
+            {votingOpen ? (
+              hasPick ? (
+                <div className="rounded-xl bg-[#00C853]/10 px-4 py-3 text-center ring-1 ring-[#00C853]/25">
+                  <p className="text-xs font-bold uppercase tracking-wide text-[#00C853]">
+                    Vote submitted
+                  </p>
+                  <p className="mt-1 text-sm font-bold text-[#081120]">
+                    Your Vote: {bet.userPickLabel}
+                  </p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 gap-2">
+                  <button
+                    type="button"
+                    disabled={pending}
+                    onClick={() => submitPick(bet.id, "HOME")}
+                    className={cn(
+                      "min-h-[44px] rounded-xl bg-[#0066FF] px-4 text-sm font-bold text-white",
+                      "active:scale-[0.98] disabled:opacity-50"
+                    )}
+                  >
+                    Vote {bet.homeTeamName}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={pending}
+                    onClick={() => submitPick(bet.id, "DRAW")}
+                    className={cn(
+                      "min-h-[44px] rounded-xl bg-[#081120]/10 px-4 text-sm font-bold text-[#081120]",
+                      "ring-1 ring-[#081120]/15 active:scale-[0.98] disabled:opacity-50"
+                    )}
+                  >
+                    Vote Draw
+                  </button>
+                  <button
+                    type="button"
+                    disabled={pending}
+                    onClick={() => submitPick(bet.id, "AWAY")}
+                    className={cn(
+                      "min-h-[44px] rounded-xl bg-[#081120] px-4 text-sm font-bold text-white",
+                      "active:scale-[0.98] disabled:opacity-50"
+                    )}
+                  >
+                    Vote {bet.awayTeamName}
+                  </button>
+                </div>
+              )
             ) : (
-              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                <button
-                  type="button"
-                  disabled={pending}
-                  onClick={() => submitPick(bet.id, bet.homeTeamId)}
-                  className={cn(
-                    "min-h-[44px] rounded-xl bg-[#0066FF] px-4 text-sm font-bold text-white",
-                    "active:scale-[0.98] disabled:opacity-50"
-                  )}
-                >
-                  Bet on {bet.homeTeamName}
-                </button>
-                <button
-                  type="button"
-                  disabled={pending}
-                  onClick={() => submitPick(bet.id, bet.awayTeamId)}
-                  className={cn(
-                    "min-h-[44px] rounded-xl bg-[#081120] px-4 text-sm font-bold text-white",
-                    "active:scale-[0.98] disabled:opacity-50"
-                  )}
-                >
-                  Bet on {bet.awayTeamName}
-                </button>
+              <div className="grid grid-cols-3 gap-2">
+                <div className="rounded-xl bg-[#081120]/5 px-2 py-2.5 text-center">
+                  <p className="text-[10px] font-bold uppercase text-[#081120]/45">
+                    {bet.homeTeamName}
+                  </p>
+                  <p className="mt-1 text-sm font-black text-[#0066FF]">
+                    {bet.homeOdd ?? "—"}
+                  </p>
+                </div>
+                <div className="rounded-xl bg-[#081120]/5 px-2 py-2.5 text-center">
+                  <p className="text-[10px] font-bold uppercase text-[#081120]/45">Draw</p>
+                  <p className="mt-1 text-sm font-black text-[#0066FF]">
+                    {bet.drawOdd ?? "—"}
+                  </p>
+                </div>
+                <div className="rounded-xl bg-[#081120]/5 px-2 py-2.5 text-center">
+                  <p className="text-[10px] font-bold uppercase text-[#081120]/45">
+                    {bet.awayTeamName}
+                  </p>
+                  <p className="mt-1 text-sm font-black text-[#0066FF]">
+                    {bet.awayOdd ?? "—"}
+                  </p>
+                </div>
               </div>
             )}
 
@@ -123,6 +139,10 @@ export function MatchBetsView({ initial, showVoteStats }: MatchBetsViewProps) {
                 <div className="flex justify-between">
                   <span>{bet.homeTeamName}</span>
                   <span className="font-bold">{bet.stats.homeVotes} votes</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Draw</span>
+                  <span className="font-bold">{bet.stats.drawVotes} votes</span>
                 </div>
                 <div className="flex justify-between">
                   <span>{bet.awayTeamName}</span>

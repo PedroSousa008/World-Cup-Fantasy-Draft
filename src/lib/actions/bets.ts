@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { MatchBetPick, PromotedMatchBetStatus } from "@prisma/client";
 import { prisma } from "@/lib/db/prisma";
 import { requireOwnerSession } from "@/lib/actions/owner/helpers";
 import { ensureRankingOutcomeRows } from "@/lib/bets/ensure-ranking-outcome-rows";
@@ -28,6 +29,13 @@ function normalizeOdd(value: string): string | null {
   const trimmed = value.trim();
   if (!trimmed) return null;
   return trimmed;
+}
+
+function parseMatchBetPick(value: string): MatchBetPick | null {
+  if (value === "HOME" || value === "DRAW" || value === "AWAY") {
+    return value as MatchBetPick;
+  }
+  return null;
 }
 
 export async function upsertRankingOutcomeRowAction(input: {
@@ -91,17 +99,9 @@ export async function deleteRankingOutcomeRowAction(
 
 export async function createPromotedMatchBetAction(input: {
   matchId: string;
-  homeOdd: string;
-  awayOdd: string;
 }): Promise<BetActionResult<{ betId: string }>> {
   const owner = await requireOwnerSession();
   if (!owner) return { ok: false, error: "Forbidden: platform Owner only." };
-
-  const homeOdd = normalizeOdd(input.homeOdd);
-  const awayOdd = normalizeOdd(input.awayOdd);
-  if (!homeOdd || !awayOdd) {
-    return { ok: false, error: "Both odds are required." };
-  }
 
   const match = await prisma.match.findUnique({
     where: { id: input.matchId },
@@ -115,14 +115,32 @@ export async function createPromotedMatchBetAction(input: {
   const existing = await prisma.ownerPromotedMatchBet.findUnique({
     where: { matchId: input.matchId },
   });
-  if (existing) return { ok: false, error: "This match is already in Bets." };
+
+  if (existing?.isActive) {
+    return { ok: false, error: "This match is already in Bets." };
+  }
+
+  if (existing && !existing.isActive) {
+    const bet = await prisma.ownerPromotedMatchBet.update({
+      where: { id: existing.id },
+      data: {
+        isActive: true,
+        status: PromotedMatchBetStatus.VOTING_OPEN,
+        homeOdd: null,
+        drawOdd: null,
+        awayOdd: null,
+        createdById: owner.id,
+      },
+    });
+    revalidateBetsPaths();
+    return { ok: true, data: { betId: bet.id } };
+  }
 
   const bet = await prisma.ownerPromotedMatchBet.create({
     data: {
       matchId: input.matchId,
-      homeOdd,
-      awayOdd,
       createdById: owner.id,
+      status: PromotedMatchBetStatus.VOTING_OPEN,
     },
   });
 
@@ -130,23 +148,68 @@ export async function createPromotedMatchBetAction(input: {
   return { ok: true, data: { betId: bet.id } };
 }
 
-export async function updatePromotedMatchBetOddsAction(input: {
+export async function publishPromotedMatchBetOddsAction(input: {
   betId: string;
   homeOdd: string;
+  drawOdd: string;
   awayOdd: string;
 }): Promise<BetActionResult> {
   const owner = await requireOwnerSession();
   if (!owner) return { ok: false, error: "Forbidden: platform Owner only." };
 
   const homeOdd = normalizeOdd(input.homeOdd);
+  const drawOdd = normalizeOdd(input.drawOdd);
   const awayOdd = normalizeOdd(input.awayOdd);
-  if (!homeOdd || !awayOdd) {
-    return { ok: false, error: "Both odds are required." };
+  if (!homeOdd || !drawOdd || !awayOdd) {
+    return { ok: false, error: "Home, Draw, and Away odds are all required to publish." };
+  }
+
+  const bet = await prisma.ownerPromotedMatchBet.findUnique({
+    where: { id: input.betId, isActive: true },
+  });
+  if (!bet) return { ok: false, error: "Bet not found." };
+
+  await prisma.ownerPromotedMatchBet.update({
+    where: { id: input.betId },
+    data: {
+      homeOdd,
+      drawOdd,
+      awayOdd,
+      status: PromotedMatchBetStatus.ODDS_PUBLISHED,
+    },
+  });
+
+  revalidateBetsPaths();
+  return { ok: true };
+}
+
+export async function updatePromotedMatchBetOddsAction(input: {
+  betId: string;
+  homeOdd: string;
+  drawOdd: string;
+  awayOdd: string;
+}): Promise<BetActionResult> {
+  const owner = await requireOwnerSession();
+  if (!owner) return { ok: false, error: "Forbidden: platform Owner only." };
+
+  const homeOdd = normalizeOdd(input.homeOdd);
+  const drawOdd = normalizeOdd(input.drawOdd);
+  const awayOdd = normalizeOdd(input.awayOdd);
+  if (!homeOdd || !drawOdd || !awayOdd) {
+    return { ok: false, error: "Home, Draw, and Away odds are all required." };
+  }
+
+  const bet = await prisma.ownerPromotedMatchBet.findUnique({
+    where: { id: input.betId, isActive: true },
+  });
+  if (!bet) return { ok: false, error: "Bet not found." };
+  if (bet.status !== PromotedMatchBetStatus.ODDS_PUBLISHED) {
+    return { ok: false, error: "Publish odds first before saving changes." };
   }
 
   await prisma.ownerPromotedMatchBet.update({
     where: { id: input.betId },
-    data: { homeOdd, awayOdd },
+    data: { homeOdd, drawOdd, awayOdd },
   });
 
   revalidateBetsPaths();
@@ -157,7 +220,10 @@ export async function removePromotedMatchBetAction(betId: string): Promise<BetAc
   const owner = await requireOwnerSession();
   if (!owner) return { ok: false, error: "Forbidden: platform Owner only." };
 
-  await prisma.ownerPromotedMatchBet.delete({ where: { id: betId } });
+  await prisma.ownerPromotedMatchBet.update({
+    where: { id: betId },
+    data: { isActive: false },
+  });
 
   revalidateBetsPaths();
   return { ok: true };
@@ -165,25 +231,20 @@ export async function removePromotedMatchBetAction(betId: string): Promise<BetAc
 
 export async function submitMatchBetVoteAction(input: {
   promotedBetId: string;
-  pickedTeamId: string;
+  pick: string;
 }): Promise<BetActionResult> {
   const userId = await requireSignedInUserId();
   if (!userId) return { ok: false, error: "Not signed in." };
 
+  const pick = parseMatchBetPick(input.pick);
+  if (!pick) return { ok: false, error: "Invalid vote." };
+
   const bet = await prisma.ownerPromotedMatchBet.findUnique({
     where: { id: input.promotedBetId, isActive: true },
-    include: {
-      match: { select: { homeTeamId: true, awayTeamId: true } },
-    },
   });
   if (!bet) return { ok: false, error: "Bet not found." };
-
-  const { homeTeamId, awayTeamId } = bet.match;
-  if (
-    input.pickedTeamId !== homeTeamId &&
-    input.pickedTeamId !== awayTeamId
-  ) {
-    return { ok: false, error: "Invalid team selection." };
+  if (bet.status !== PromotedMatchBetStatus.VOTING_OPEN) {
+    return { ok: false, error: "Voting is closed for this match." };
   }
 
   const existing = await prisma.matchBetVote.findUnique({
@@ -195,14 +256,14 @@ export async function submitMatchBetVoteAction(input: {
     },
   });
   if (existing) {
-    return { ok: false, error: "You have already submitted a bet for this match." };
+    return { ok: false, error: "You have already submitted a vote for this match." };
   }
 
   await prisma.matchBetVote.create({
     data: {
       promotedBetId: input.promotedBetId,
       userId,
-      pickedTeamId: input.pickedTeamId,
+      pick,
     },
   });
 
