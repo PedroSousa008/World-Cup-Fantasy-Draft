@@ -45,12 +45,12 @@ const OWNER_SECTIONS = [
   },
   {
     icon: Trophy,
-    title: "Betting & Punishments",
-    description: "Enable betting, create promoted bets, assign rewards.",
+    title: "Bets Management",
+    description: "Promote matches, set manual odds, and manage ranking rewards.",
     color: "text-[#E53935]",
     bg: "bg-[#E53935]/10",
-    href: null,
-    available: false,
+    href: "/owner/bets",
+    available: true,
   },
 ];
 

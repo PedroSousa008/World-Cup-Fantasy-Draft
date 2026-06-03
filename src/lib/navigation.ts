@@ -46,7 +46,7 @@ export const PREDICTIONS_TABS: SubTab[] = [
 
 export const BETS_TABS: SubTab[] = [
   { label: "Bets", slug: "bets" },
-  { label: "Punishments", slug: "punishments" },
+  { label: "Punishments & Rewards", slug: "punishments" },
 ];
 
 export const CALENDAR_TABS: SubTab[] = [

@@ -166,6 +166,7 @@ model User {
   groupPredictions        UserGroupPrediction[]
   knockoutPredictions     UserKnockoutPrediction[]
   matchPredictions        UserMatchPrediction[]
+  matchBetVotes           MatchBetVote[]
 }
 
 model Account {
@@ -290,6 +291,7 @@ model Match {
 
   events MatchEvent[]
   bets   Bet[]
+  promotedMatchBet OwnerPromotedMatchBet?
   participants MatchParticipant[]
   matchPredictions UserMatchPrediction[]
 
@@ -576,6 +578,45 @@ model Punishment {
   assignedToId String?
   createdAt    DateTime         @default(now())
   updatedAt    DateTime         @updatedAt
+}
+
+/// Owner-editable ranking outcomes (reward or punishment text per league position).
+model RankingOutcomeRow {
+  position  Int      @id
+  text      String   @default("")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+/// Owner-promoted match for league voting (manual odds only).
+model OwnerPromotedMatchBet {
+  id          String   @id @default(cuid())
+  matchId     String   @unique
+  match       Match    @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  homeOdd     String
+  awayOdd     String
+  createdById String
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  votes MatchBetVote[]
+
+  @@index([isActive])
+}
+
+model MatchBetVote {
+  id            String                @id @default(cuid())
+  promotedBetId String
+  promotedBet   OwnerPromotedMatchBet @relation(fields: [promotedBetId], references: [id], onDelete: Cascade)
+  userId        String
+  user          User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  pickedTeamId  String
+  submittedAt   DateTime              @default(now())
+  updatedAt     DateTime              @updatedAt
+
+  @@unique([promotedBetId, userId])
+  @@index([userId])
 }
 
 // ─── Calendar ────────────────────────────────────────────────────────────────

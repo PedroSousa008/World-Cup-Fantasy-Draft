@@ -100,6 +100,7 @@ export async function deleteOwnerUserAction(userId: string): Promise<OwnerAction
       await tx.bet.deleteMany({
         where: { OR: [{ creatorId: userId }, { opponentId: userId }] },
       });
+      await tx.matchBetVote.deleteMany({ where: { userId } });
       await tx.calendarEvent.updateMany({
         where: { createdById: userId },
         data: { createdById: null },
