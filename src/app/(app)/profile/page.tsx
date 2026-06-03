@@ -1,5 +1,6 @@
 import { auth } from "@/lib/auth";
 import { getBranding } from "@/lib/branding/get-branding";
+import { getUserLeaguePoints } from "@/lib/rankings/user-total-points";
 import { Card, EmptyState } from "@/components/ui/card";
 import { PageHeader } from "@/components/layout/section-page";
 import { AppLogoStatic } from "@/components/branding/app-logo";
@@ -10,6 +11,7 @@ export default async function ProfilePage() {
   const session = await auth();
   const user = session!.user;
   const branding = await getBranding();
+  const leaguePoints = await getUserLeaguePoints(user.id);
 
   return (
     <div className="space-y-6 overflow-x-hidden">
@@ -31,11 +33,15 @@ export default async function ProfilePage() {
           </div>
           <div className="flex gap-6 text-center sm:text-right">
             <div>
-              <p className="text-display text-2xl text-white">—</p>
+              <p className="text-display text-2xl text-white">
+                {leaguePoints.rank ?? "—"}
+              </p>
               <p className="text-xs text-white/45">Rank</p>
             </div>
             <div>
-              <p className="text-display text-2xl text-[#0066FF]">0</p>
+              <p className="text-display text-2xl text-[#0066FF]">
+                {leaguePoints.totalPoints.toLocaleString()}
+              </p>
               <p className="text-xs text-white/45">Points</p>
             </div>
           </div>

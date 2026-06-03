@@ -1,13 +1,14 @@
 import { prisma } from "@/lib/db/prisma";
-import { loadPowerScoringContext } from "@/lib/powers/scoring-context";
 import { getNationFlag } from "@/lib/nations";
 import { getPositionLabel } from "@/lib/players/types";
-import { MATCHDAY_COUNT, MIN_LEAGUE_TABLE_ROWS } from "@/lib/scoring/constants";
+import { MIN_LEAGUE_TABLE_ROWS } from "@/lib/scoring/constants";
 import type { PlayerRankingRow, RankingsData, TeamRankingRow } from "@/lib/rankings/types";
+import { loadLeaguePointsContext } from "@/lib/rankings/league-points-context";
 import {
-  buildPowerPointsIndex,
-  computeUserMatchdayPointsFromIndex,
-} from "@/lib/rankings/power-points-index";
+  computeUserAutomaticPoints,
+  computeUserTotalPoints,
+} from "@/lib/rankings/user-total-points";
+import { computeUserMatchdayPointsFromIndex } from "@/lib/rankings/power-points-index";
 
 function buildLeagueTable(
   entries: { userId: string; teamName: string; nation: string; points: number }[],
@@ -42,51 +43,7 @@ function buildLeagueTable(
 }
 
 export async function getRankingsData(currentUserTeamName: string): Promise<RankingsData> {
-  const matchdays = Array.from({ length: MATCHDAY_COUNT }, (_, i) => i + 1);
-
-  const [scoringCtx, users, players, recentMatch, allPowers, allRivals] =
-    await Promise.all([
-      loadPowerScoringContext(),
-      prisma.user.findMany({
-        select: { id: true, teamName: true, selectedNation: true },
-        orderBy: { teamName: "asc" },
-      }),
-      prisma.player.findMany({
-        select: {
-          id: true,
-          name: true,
-          photoUrl: true,
-          nationality: true,
-          position: true,
-          nationalTeam: { select: { name: true, flagEmoji: true } },
-          fantasySlots: {
-            take: 1,
-            select: {
-              fantasyTeam: {
-                select: { user: { select: { teamName: true } } },
-              },
-            },
-          },
-        },
-        orderBy: { name: "asc" },
-      }),
-      prisma.match.findFirst({
-        where: { matchday: { not: null } },
-        orderBy: { updatedAt: "desc" },
-        select: { matchday: true },
-      }),
-      prisma.userPower.findMany({
-        where: {
-          matchday: { not: null },
-          status: { in: ["PENDING", "ACTIVE", "USED"] },
-        },
-      }),
-      prisma.rivalChallenge.findMany({
-        where: { status: "USED" },
-      }),
-    ]);
-
-  const powerIndex = buildPowerPointsIndex(allPowers, allRivals);
+  const { matchdays, scoringCtx, powerIndex, users } = await loadLeaguePointsContext();
 
   const pointsByUserMatchday = new Map<string, number>();
   const getPoints = (userId: string, matchday: number) => {
@@ -101,15 +58,17 @@ export async function getRankingsData(currentUserTeamName: string): Promise<Rank
   };
 
   const overallEntries = users.map((user) => {
-    let points = 0;
-    for (const md of matchdays) {
-      points += getPoints(user.id, md);
-    }
+    const automaticPoints = computeUserAutomaticPoints(
+      user.id,
+      matchdays,
+      scoringCtx,
+      powerIndex
+    );
     return {
       userId: user.id,
       teamName: user.teamName,
       nation: user.selectedNation,
-      points,
+      points: computeUserTotalPoints(automaticPoints, user.manualPointsAdjustment),
     };
   });
 
@@ -125,6 +84,33 @@ export async function getRankingsData(currentUserTeamName: string): Promise<Rank
     }));
     matchdayRankings[md] = buildLeagueTable(mdEntries, MIN_LEAGUE_TABLE_ROWS);
   }
+
+  const [players, recentMatch] = await Promise.all([
+    prisma.player.findMany({
+      select: {
+        id: true,
+        name: true,
+        photoUrl: true,
+        nationality: true,
+        position: true,
+        nationalTeam: { select: { name: true, flagEmoji: true } },
+        fantasySlots: {
+          take: 1,
+          select: {
+            fantasyTeam: {
+              select: { user: { select: { teamName: true } } },
+            },
+          },
+        },
+      },
+      orderBy: { name: "asc" },
+    }),
+    prisma.match.findFirst({
+      where: { matchday: { not: null } },
+      orderBy: { updatedAt: "desc" },
+      select: { matchday: true },
+    }),
+  ]);
 
   const playerRows: PlayerRankingRow[] = players
     .map((player) => {
@@ -153,7 +139,7 @@ export async function getRankingsData(currentUserTeamName: string): Promise<Rank
   const defaultMatchday =
     recentMatch?.matchday != null &&
     recentMatch.matchday >= 1 &&
-    recentMatch.matchday <= MATCHDAY_COUNT
+    recentMatch.matchday <= matchdays.length
       ? recentMatch.matchday
       : 1;
 

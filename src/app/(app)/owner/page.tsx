@@ -4,7 +4,7 @@ import { auth } from "@/lib/auth";
 import { UserRole } from "@prisma/client";
 import { Card, EmptyState } from "@/components/ui/card";
 import { PageHeader } from "@/components/layout/section-page";
-import { Shield, Users, Calendar, Settings, Trophy } from "lucide-react";
+import { Shield, Users, Calendar, Settings, Trophy, UserRound } from "lucide-react";
 
 const OWNER_SECTIONS = [
   {
@@ -14,6 +14,15 @@ const OWNER_SECTIONS = [
     color: "text-[#0066FF]",
     bg: "bg-[#0066FF]/10",
     href: "/owner/players",
+    available: true,
+  },
+  {
+    icon: UserRound,
+    title: "All Users",
+    description: "View every user, edit team details, adjust points, or remove accounts.",
+    color: "text-[#00C853]",
+    bg: "bg-[#00C853]/10",
+    href: "/owner/users",
     available: true,
   },
   {
