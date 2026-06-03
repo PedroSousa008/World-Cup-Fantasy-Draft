@@ -23,7 +23,17 @@ export interface LeaguePointsContext {
   users: LeagueUserPointsRow[];
 }
 
-export async function loadLeaguePointsContext(): Promise<LeaguePointsContext> {
+const CONTEXT_CACHE_TTL_MS = 25_000;
+
+let contextCache: { ctx: LeaguePointsContext; at: number } | null = null;
+let contextPromise: Promise<LeaguePointsContext> | null = null;
+
+export function invalidateLeaguePointsContext(): void {
+  contextCache = null;
+  contextPromise = null;
+}
+
+async function buildLeaguePointsContext(): Promise<LeaguePointsContext> {
   const matchdays = Array.from({ length: MATCHDAY_COUNT }, (_, i) => i + 1);
 
   const [scoringCtx, users, allPowers, allRivals, predictionPointsByUser] =
@@ -64,4 +74,27 @@ export async function loadLeaguePointsContext(): Promise<LeaguePointsContext> {
       predictionPoints: predictionPointsByUser.get(user.id) ?? 0,
     })),
   };
+}
+
+export async function loadLeaguePointsContext(): Promise<LeaguePointsContext> {
+  if (contextCache && Date.now() - contextCache.at <= CONTEXT_CACHE_TTL_MS) {
+    return contextCache.ctx;
+  }
+
+  if (contextPromise) {
+    return contextPromise;
+  }
+
+  contextPromise = buildLeaguePointsContext()
+    .then((ctx) => {
+      contextCache = { ctx, at: Date.now() };
+      contextPromise = null;
+      return ctx;
+    })
+    .catch((err) => {
+      contextPromise = null;
+      throw err;
+    });
+
+  return contextPromise;
 }

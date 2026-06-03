@@ -3,13 +3,14 @@
 import type { ProfilePredictionsPayload } from "@/lib/profile/types";
 import { useProfileTab } from "@/hooks/use-profile-tab";
 import { ProfileSection, ProfileStatCard } from "@/components/profile/profile-ui";
+import { ProfilePredictionsSkeleton } from "@/components/profile/profile-tab-skeleton";
 
-interface ProfilePredictionsViewProps {
-  initialData: ProfilePredictionsPayload;
-}
+export function ProfilePredictionsView() {
+  const { data, loading } = useProfileTab<ProfilePredictionsPayload>("predictions");
 
-export function ProfilePredictionsView({ initialData }: ProfilePredictionsViewProps) {
-  const { data } = useProfileTab("predictions", initialData);
+  if (loading || !data) {
+    return <ProfilePredictionsSkeleton />;
+  }
 
   const accuracyLabel =
     data.predictionAccuracyPercent != null

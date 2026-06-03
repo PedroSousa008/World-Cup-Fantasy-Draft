@@ -3,11 +3,8 @@
 import type { ProfileAchievementsPayload } from "@/lib/profile/types";
 import { useProfileTab } from "@/hooks/use-profile-tab";
 import { ProfileSection } from "@/components/profile/profile-ui";
+import { ProfileAchievementsSkeleton } from "@/components/profile/profile-tab-skeleton";
 import { cn } from "@/lib/utils";
-
-interface ProfileAchievementsViewProps {
-  initialData: ProfileAchievementsPayload;
-}
 
 function powerStatusClass(status: string): string {
   switch (status) {
@@ -23,8 +20,12 @@ function powerStatusClass(status: string): string {
   }
 }
 
-export function ProfileAchievementsView({ initialData }: ProfileAchievementsViewProps) {
-  const { data } = useProfileTab("achievements", initialData);
+export function ProfileAchievementsView() {
+  const { data, loading } = useProfileTab<ProfileAchievementsPayload>("achievements");
+
+  if (loading || !data) {
+    return <ProfileAchievementsSkeleton />;
+  }
 
   return (
     <div className="space-y-8">
@@ -78,7 +79,9 @@ export function ProfileAchievementsView({ initialData }: ProfileAchievementsView
                   className="grid grid-cols-2 px-4 py-3 text-sm"
                 >
                   <span className="font-semibold text-white">MD{row.matchday}</span>
-                  <span className="text-right font-bold text-[#0066FF]">{row.points}</span>
+                  <span className="text-right font-bold tabular-nums text-[#0066FF]">
+                    {row.points}
+                  </span>
                 </li>
               ))}
             </ul>

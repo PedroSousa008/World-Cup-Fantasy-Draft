@@ -4,13 +4,14 @@ import type { ProfileOverviewPayload } from "@/lib/profile/types";
 import { useProfileTab } from "@/hooks/use-profile-tab";
 import { ProfileHeaderCard } from "@/components/profile/profile-header-card";
 import { ProfileStatCard } from "@/components/profile/profile-ui";
+import { ProfileOverviewSkeleton } from "@/components/profile/profile-tab-skeleton";
 
-interface ProfileOverviewViewProps {
-  initialData: ProfileOverviewPayload;
-}
+export function ProfileOverviewView() {
+  const { data, loading, refresh } = useProfileTab<ProfileOverviewPayload>("overview");
 
-export function ProfileOverviewView({ initialData }: ProfileOverviewViewProps) {
-  const { data, refresh } = useProfileTab("overview", initialData);
+  if (loading || !data) {
+    return <ProfileOverviewSkeleton />;
+  }
 
   return (
     <div className="space-y-6">

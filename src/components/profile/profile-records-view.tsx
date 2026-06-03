@@ -7,10 +7,7 @@ import {
   ProfileRecordCard,
   ProfileSection,
 } from "@/components/profile/profile-ui";
-
-interface ProfileRecordsViewProps {
-  initialData: ProfileRecordsPayload;
-}
+import { ProfileRecordsSkeleton } from "@/components/profile/profile-tab-skeleton";
 
 function formatMatchdayRecord(
   record: ProfileRecordsPayload["bestMatchday"],
@@ -23,8 +20,13 @@ function formatMatchdayRecord(
   };
 }
 
-export function ProfileRecordsView({ initialData }: ProfileRecordsViewProps) {
-  const { data } = useProfileTab("records", initialData);
+export function ProfileRecordsView() {
+  const { data, loading } = useProfileTab<ProfileRecordsPayload>("records");
+
+  if (loading || !data) {
+    return <ProfileRecordsSkeleton />;
+  }
+
   const best = formatMatchdayRecord(data.bestMatchday, "No data yet");
   const worst = formatMatchdayRecord(data.worstMatchday, "No data yet");
 

@@ -1,6 +1,9 @@
 import type { ProfileTabPayload, ProfileTabSlug } from "@/lib/profile/types";
 
-const STALE_MS = 12_000;
+/** Background refresh interval while a tab is open. */
+const REFRESH_MS = 12_000;
+/** Keep showing cached data this long (instant revisit). */
+const DISPLAY_MAX_MS = 5 * 60_000;
 
 type TabCache = {
   data: ProfileTabPayload;
@@ -10,17 +13,28 @@ type TabCache = {
 
 const tabCaches = new Map<ProfileTabSlug, TabCache>();
 
-export function getCachedProfileTab(tab: ProfileTabSlug): ProfileTabPayload | null {
+export function getCachedProfileTabForDisplay(
+  tab: ProfileTabSlug
+): ProfileTabPayload | null {
   const entry = tabCaches.get(tab);
-  if (!entry) return null;
-  if (Date.now() - entry.fetchedAt > STALE_MS) return null;
+  if (!entry || entry.fetchedAt <= 0) return null;
+  if (Date.now() - entry.fetchedAt > DISPLAY_MAX_MS) return null;
   return entry.data;
 }
 
-export function isProfileTabCacheStale(tab: ProfileTabSlug): boolean {
+/** @deprecated use getCachedProfileTabForDisplay */
+export function getCachedProfileTab(tab: ProfileTabSlug): ProfileTabPayload | null {
+  return getCachedProfileTabForDisplay(tab);
+}
+
+export function shouldRefreshProfileTab(tab: ProfileTabSlug): boolean {
   const entry = tabCaches.get(tab);
-  if (!entry) return true;
-  return Date.now() - entry.fetchedAt > STALE_MS;
+  if (!entry || entry.fetchedAt <= 0) return true;
+  return Date.now() - entry.fetchedAt > REFRESH_MS;
+}
+
+export function isProfileTabCacheStale(tab: ProfileTabSlug): boolean {
+  return shouldRefreshProfileTab(tab);
 }
 
 export function seedProfileTabCache(tab: ProfileTabSlug, data: ProfileTabPayload): void {
@@ -37,12 +51,12 @@ export function invalidateProfileTabCache(tab?: ProfileTabSlug): void {
 
 export async function fetchProfileTab(
   tab: ProfileTabSlug,
-  options?: { force?: boolean }
+  options?: { force?: boolean; background?: boolean }
 ): Promise<ProfileTabPayload> {
   const force = options?.force ?? false;
   const existing = tabCaches.get(tab);
 
-  if (!force && existing && Date.now() - existing.fetchedAt <= STALE_MS) {
+  if (!force && existing && existing.fetchedAt > 0 && !shouldRefreshProfileTab(tab)) {
     return existing.data;
   }
 
@@ -83,8 +97,14 @@ export async function fetchProfileTab(
   }
 }
 
+/** Fetch in background; never throws to caller. */
+export function refreshProfileTabInBackground(tab: ProfileTabSlug): void {
+  if (tabCaches.get(tab)?.promise) return;
+  void fetchProfileTab(tab, { force: true, background: true }).catch(() => {});
+}
+
 export function prefetchProfileTab(tab: ProfileTabSlug): void {
-  if (!isProfileTabCacheStale(tab) || tabCaches.get(tab)?.promise) return;
+  if (!shouldRefreshProfileTab(tab) || tabCaches.get(tab)?.promise) return;
   void fetchProfileTab(tab).catch(() => {});
 }
 

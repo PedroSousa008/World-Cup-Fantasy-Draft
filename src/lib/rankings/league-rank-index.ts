@@ -1,4 +1,4 @@
-import { loadLeaguePointsContext } from "@/lib/rankings/league-points-context";
+import { loadLeaguePointsContext, invalidateLeaguePointsContext } from "@/lib/rankings/league-points-context";
 import {
   computeUserAutomaticPoints,
   computeUserTotalPoints,
@@ -80,4 +80,5 @@ export async function getUserLeagueRankCached(userId: string): Promise<number | 
 
 export function invalidateLeagueRankIndex(): void {
   cache = null;
+  invalidateLeaguePointsContext();
 }

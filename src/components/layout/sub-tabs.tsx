@@ -4,7 +4,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { prefetchPunishmentsRewards } from "@/lib/bets/punishments-rewards-cache";
 import { prefetchProfileTab } from "@/lib/profile/profile-cache";
-import { PROFILE_TABS } from "@/lib/navigation";
 import { cn } from "@/lib/utils";
 import type { SubTab } from "@/lib/navigation";
 
@@ -16,6 +15,8 @@ interface SubTabsProps {
   accent?: "blue" | "green" | "red";
   hrefForTab?: (tab: SubTab) => string;
   isTabActive?: (tab: SubTab, pathname: string) => boolean;
+  /** Lock horizontal swipe — no vertical movement while scrolling tabs. */
+  lockHorizontalScroll?: boolean;
 }
 
 export function SubTabs({
@@ -25,6 +26,7 @@ export function SubTabs({
   accent = "blue",
   hrefForTab,
   isTabActive,
+  lockHorizontalScroll = false,
 }: SubTabsProps) {
   const pathname = usePathname();
 
@@ -35,8 +37,22 @@ export function SubTabs({
   }[accent];
 
   return (
-    <div className="overflow-x-auto border-b border-white/8">
-      <nav className="-mb-px flex min-w-max gap-1 px-1" aria-label="Sub navigation">
+    <div
+      className={cn(
+        "shrink-0 border-b border-white/8",
+        lockHorizontalScroll
+          ? "h-12 max-h-12 overflow-x-auto overflow-y-hidden overscroll-x-contain overscroll-y-none [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          : "overflow-x-auto"
+      )}
+      style={lockHorizontalScroll ? { touchAction: "pan-x pinch-zoom" } : undefined}
+    >
+      <nav
+        className={cn(
+          "-mb-px flex min-w-max gap-1 px-1",
+          lockHorizontalScroll && "h-12 items-stretch"
+        )}
+        aria-label="Sub navigation"
+      >
         {tabs.map((tab) => {
           const href = hrefForTab?.(tab) ?? `${basePath}/${tab.slug}`;
           const isActive = activeTab
@@ -49,26 +65,45 @@ export function SubTabs({
             <Link
               key={tab.slug}
               href={href}
+              scroll={false}
               onMouseEnter={() => {
                 if (basePath === "/bets" && tab.slug === "punishments") {
                   prefetchPunishmentsRewards();
                 }
                 if (basePath === "/profile") {
-                  const profileSlug = PROFILE_TABS.find((t) => t.slug === tab.slug)?.slug;
-                  if (profileSlug) {
-                    prefetchProfileTab(profileSlug as "overview" | "records" | "squad" | "predictions" | "achievements");
-                  }
+                  prefetchProfileTab(
+                    tab.slug as
+                      | "overview"
+                      | "records"
+                      | "squad"
+                      | "predictions"
+                      | "achievements"
+                  );
+                }
+              }}
+              onTouchStart={() => {
+                if (basePath === "/profile") {
+                  prefetchProfileTab(
+                    tab.slug as
+                      | "overview"
+                      | "records"
+                      | "squad"
+                      | "predictions"
+                      | "achievements"
+                  );
                 }
               }}
               className={cn(
-                "relative whitespace-nowrap px-4 py-3.5 text-sm font-semibold transition-all duration-300",
+                "relative flex shrink-0 items-center whitespace-nowrap px-4 text-sm font-semibold transition-colors duration-200",
+                lockHorizontalScroll ? "h-12 py-0" : "py-3.5",
                 "border-b-2",
                 isActive
                   ? accentColor.active
                   : cn("border-transparent text-white/45", accentColor.hover)
               )}
+              style={lockHorizontalScroll ? { touchAction: "manipulation" } : undefined}
             >
-              {tab.label}
+              {tab.shortLabel ?? tab.label}
             </Link>
           );
         })}

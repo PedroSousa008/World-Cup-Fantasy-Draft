@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { MAIN_NAV, OWNER_NAV } from "@/lib/navigation";
+import { prefetchProfileOverview } from "@/lib/profile/profile-cache";
 import { UserRole } from "@prisma/client";
 import { Shield } from "lucide-react";
 
@@ -30,6 +31,12 @@ export function BottomNav({ userRole, hidden }: BottomNavProps) {
             <Link
               key={item.href}
               href={item.href}
+              onTouchStart={() => {
+                if (item.href.startsWith("/profile")) prefetchProfileOverview();
+              }}
+              onMouseEnter={() => {
+                if (item.href.startsWith("/profile")) prefetchProfileOverview();
+              }}
               className={cn(
                 "flex flex-1 flex-col items-center gap-0.5 px-1 py-2.5 text-[10px] font-semibold transition-all duration-300",
                 isActive

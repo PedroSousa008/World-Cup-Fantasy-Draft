@@ -57,7 +57,17 @@ function applyEventCounts(stats: PlayerComputedStats, events: { eventType: strin
  * Recomputes all player stats from source data (matches, events, participation, progression).
  * Idempotent — safe to run after every Owner save.
  */
-export async function loadAllPlayerStats(): Promise<Map<string, PlayerComputedStats>> {
+const STATS_CACHE_TTL_MS = 20_000;
+
+let statsCache: { map: Map<string, PlayerComputedStats>; at: number } | null = null;
+let statsPromise: Promise<Map<string, PlayerComputedStats>> | null = null;
+
+export function invalidateAllPlayerStatsCache(): void {
+  statsCache = null;
+  statsPromise = null;
+}
+
+async function computeAllPlayerStats(): Promise<Map<string, PlayerComputedStats>> {
   const [players, finishedMatches, progressions, allParticipants] = await Promise.all([
     prisma.player.findMany({
       select: {
@@ -179,4 +189,27 @@ export async function loadAllPlayerStats(): Promise<Map<string, PlayerComputedSt
   }
 
   return statsMap;
+}
+
+export async function loadAllPlayerStats(): Promise<Map<string, PlayerComputedStats>> {
+  if (statsCache && Date.now() - statsCache.at <= STATS_CACHE_TTL_MS) {
+    return statsCache.map;
+  }
+
+  if (statsPromise) {
+    return statsPromise;
+  }
+
+  statsPromise = computeAllPlayerStats()
+    .then((map) => {
+      statsCache = { map, at: Date.now() };
+      statsPromise = null;
+      return map;
+    })
+    .catch((err) => {
+      statsPromise = null;
+      throw err;
+    });
+
+  return statsPromise;
 }

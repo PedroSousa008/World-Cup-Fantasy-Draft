@@ -19,7 +19,7 @@ export const MAIN_NAV: NavItem[] = [
   { label: "Predictions", href: "/predictions", icon: Target },
   { label: "Bets & Punishments", href: "/bets", icon: Trophy },
   { label: "Calendar", href: "/calendar", icon: Calendar },
-  { label: "Profile", href: "/profile", icon: User },
+  { label: "Profile", href: "/profile/overview", icon: User },
 ];
 
 export const OWNER_NAV: NavItem[] = [
