@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { prefetchPunishmentsRewards } from "@/lib/bets/punishments-rewards-cache";
+import { prefetchProfileTab } from "@/lib/profile/profile-cache";
+import { PROFILE_TABS } from "@/lib/navigation";
 import { cn } from "@/lib/utils";
 import type { SubTab } from "@/lib/navigation";
 
@@ -50,6 +52,12 @@ export function SubTabs({
               onMouseEnter={() => {
                 if (basePath === "/bets" && tab.slug === "punishments") {
                   prefetchPunishmentsRewards();
+                }
+                if (basePath === "/profile") {
+                  const profileSlug = PROFILE_TABS.find((t) => t.slug === tab.slug)?.slug;
+                  if (profileSlug) {
+                    prefetchProfileTab(profileSlug as "overview" | "records" | "squad" | "predictions" | "achievements");
+                  }
                 }
               }}
               className={cn(

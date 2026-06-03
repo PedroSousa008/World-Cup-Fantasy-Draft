@@ -44,7 +44,7 @@ export const authConfig = {
     strategy: "jwt",
   },
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger, session }) {
       if (user) {
         token.id = user.id!;
         token.username = user.username;
@@ -52,6 +52,14 @@ export const authConfig = {
         token.selectedNation = user.selectedNation;
         token.role = user.role;
         token.profilePicture = user.profilePicture;
+      }
+      if (trigger === "update" && session) {
+        const patch = session as {
+          username?: string;
+          teamName?: string;
+        };
+        if (patch.username) token.username = patch.username;
+        if (patch.teamName) token.teamName = patch.teamName;
       }
       return token;
     },

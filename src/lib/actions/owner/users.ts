@@ -26,6 +26,11 @@ function revalidateUserPaths() {
   revalidatePath("/my-team");
   revalidatePath("/my-team/rankings");
   revalidatePath("/profile");
+  revalidatePath("/profile/overview");
+  revalidatePath("/profile/records");
+  revalidatePath("/profile/squad");
+  revalidatePath("/profile/predictions");
+  revalidatePath("/profile/achievements");
 }
 
 export async function updateOwnerUserAction(

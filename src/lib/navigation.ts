@@ -49,6 +49,14 @@ export const BETS_TABS: SubTab[] = [
   { label: "Punishments & Rewards", slug: "punishments" },
 ];
 
+export const PROFILE_TABS: SubTab[] = [
+  { label: "Overview", slug: "overview" },
+  { label: "Records", slug: "records" },
+  { label: "Squad Stats", slug: "squad", shortLabel: "Squad" },
+  { label: "Predictions & Bets", slug: "predictions", shortLabel: "Predictions" },
+  { label: "Achievements", slug: "achievements" },
+];
+
 export const CALENDAR_TABS: SubTab[] = [
   { label: "Calendar", slug: "calendar" },
   { label: "Games", slug: "games" },
